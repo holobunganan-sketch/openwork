@@ -5,6 +5,9 @@ on:
     tags:
       - openwork-v0.1.0-rc.*
       - openwork-v0.1.0
+    branches:
+      - release/openwork-v0.1.0-rc.*
+      - release/openwork-v0.1.0
   workflow_dispatch:
     inputs:
       tag:
@@ -30,14 +33,29 @@ jobs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
       prerelease: ${{ steps.release.outputs.prerelease }}
+      source_ref: ${{ steps.release.outputs.source_ref }}
+    permissions:
+      contents: read
     steps:
       - name: Resolve release metadata
         id: release
         env:
           INPUT_TAG: ${{ github.event.inputs.tag }}
-          REF_TAG: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_SHA: ${{ github.sha }}
         run: |
-          tag="${INPUT_TAG:-$REF_TAG}"
+          tag="${INPUT_TAG:-$REF_NAME}"
+          source_ref="$tag"
+          if [[ "$EVENT_NAME" == "push" && "$REF_TYPE" == "branch" ]]; then
+            if [[ "$REF_NAME" != release/* ]]; then
+              echo "Release branch must use the release/<tag> namespace" >&2
+              exit 1
+            fi
+            tag="${REF_NAME#release/}"
+            source_ref="$REF_SHA"
+          fi
           if [[ ! "$tag" =~ ^openwork-v0\.1\.0(-rc\.[1-9][0-9]*)?$ ]]; then
             echo "Invalid OpenWork release tag: $tag" >&2
             exit 1
@@ -48,11 +66,12 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
 
       - name: Checkout release tag
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          ref: ${{ steps.release.outputs.tag }}
+          ref: ${{ steps.release.outputs.source_ref }}
           fetch-depth: 0
 
       - name: Require a commit merged into openwork-main
@@ -79,7 +98,7 @@ jobs:
     needs: validate
     uses: ./.github/workflows/openwork-ci.yml
     with:
-      ref: ${{ needs.validate.outputs.tag }}
+      ref: ${{ needs.validate.outputs.source_ref }}
       release_version: ${{ needs.validate.outputs.version }}
 
   publish:
@@ -92,7 +111,24 @@ jobs:
       - name: Checkout tagged source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          ref: ${{ needs.validate.outputs.tag }}
+          ref: ${{ needs.validate.outputs.source_ref }}
+          fetch-depth: 0
+
+      - name: Create immutable release tag after all gates pass
+        if: github.event_name == 'push' && github.ref_type == 'branch'
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          remote=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
+          if [[ -n "$remote" ]]; then
+            if [[ "$remote" != "$(git rev-parse HEAD)" ]]; then
+              echo "Release tag already points to a different commit: $TAG" >&2
+              exit 1
+            fi
+            echo "Reusing immutable tag $TAG at $remote"
+          else
+            git push origin "HEAD:refs/tags/$TAG"
+          fi
 
       - name: Download validated Windows artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -122,3 +158,7 @@ jobs:
           args=("$TAG" release/* --verify-tag --title "OpenWork ${TAG#openwork-v}" --notes-file release-notes.md)
           if [[ "$PRERELEASE" == "true" ]]; then args+=(--prerelease); else args+=(--latest); fi
           gh release create "${args[@]}"
+
+      - name: Remove successful release control branch
+        if: github.event_name == 'push' && github.ref_type == 'branch'
+        run: git push origin --delete "$GITHUB_REF_NAME"

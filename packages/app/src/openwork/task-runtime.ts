@@ -1,5 +1,6 @@
 import type { WorkSpec } from "./work-spec"
 import { mergeContextGraphs, type ContextGraph } from "./context-graph"
+import type { WorkArtifact } from "./artifact-verifier"
 
 export type WorkTaskStatus = "draft" | "running" | "waiting" | "paused" | "ready" | "failed" | "completed"
 
@@ -35,6 +36,8 @@ export type WorkTask = {
   directory: string
   spec: WorkSpec
   context?: ContextGraph
+  artifacts?: WorkArtifact[]
+  verificationAt?: number
   status: WorkTaskStatus
   createdAt: number
   updatedAt: number
@@ -46,6 +49,15 @@ export function setWorkTaskContext(task: WorkTask, context: ContextGraph, at: nu
   return {
     ...task,
     context: mergeContextGraphs(task.context, context),
+    updatedAt: at,
+  }
+}
+
+export function setWorkTaskArtifacts(task: WorkTask, artifacts: WorkArtifact[], at: number): WorkTask {
+  return {
+    ...task,
+    artifacts,
+    verificationAt: at,
     updatedAt: at,
   }
 }

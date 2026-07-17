@@ -26,7 +26,7 @@ Formal release gates are defined in the release workflow and release documentati
 - [x] Add durable task state, activity journals, pause/resume, retry, and checkpoints
 - [x] Add workspace context assembly, source provenance, and material-question policy
 - [x] Add composable Skill routing and scoped permissions
-- [ ] Add artifact management and type-specific verification
+- [x] Add artifact management and type-specific verification
 - [ ] Add user/project memory with view, edit, export, and delete controls
 - [ ] Add wish-prompt evaluations, accessibility, visual regression, and migration coverage
 - [ ] Publish and validate `openwork-v0.2.0-rc.1`

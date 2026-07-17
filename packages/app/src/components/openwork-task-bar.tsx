@@ -5,6 +5,7 @@ import type { ContextSourceProvenance } from "@/openwork/context-graph"
 import { normalizeWorkSpec } from "@/openwork/work-spec"
 import type { WorkPermissions } from "@/openwork/work-permissions"
 import type { WorkSkillPhase } from "@/openwork/work-skill-router"
+import type { WorkArtifactKind, WorkVerificationCheckID, WorkVerificationStatus } from "@/openwork/artifact-verifier"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Icon } from "@opencode-ai/ui/v2/icon"
 import { createMemo, createSignal, For, Show } from "solid-js"
@@ -19,6 +20,8 @@ export function OpenWorkTaskBar(props: {
   onContinue: () => void
   onRetry: () => void
   onRestore: (messageID: string) => Promise<unknown> | void
+  onOpenArtifact: (path: string) => void
+  onVerifyArtifacts: () => void
 }) {
   const language = useLanguage()
   const tasks = useOpenWorkTasks()
@@ -101,7 +104,7 @@ export function OpenWorkTaskBar(props: {
           </div>
 
           <Show when={expanded()}>
-            <div class="grid max-h-[340px] grid-cols-1 gap-4 overflow-y-auto border-t border-v2-border-border-muted px-4 py-3 md:grid-cols-3">
+            <div class="grid max-h-[380px] grid-cols-1 gap-4 overflow-y-auto border-t border-v2-border-border-muted px-4 py-3 md:grid-cols-2 xl:grid-cols-4">
               <section aria-label={language.t("openwork.task.contract")}>
                 <div class="mb-2 flex items-center justify-between gap-2">
                   <h3 class="m-0 text-[11px] uppercase tracking-[0.08em] text-v2-text-text-muted [font-weight:600]">
@@ -224,6 +227,75 @@ export function OpenWorkTaskBar(props: {
                 </div>
               </section>
 
+              <section aria-label={language.t("openwork.task.artifacts")}>
+                <div class="mb-2 flex items-center justify-between gap-2">
+                  <h3 class="m-0 text-[11px] uppercase tracking-[0.08em] text-v2-text-text-muted [font-weight:600]">
+                    {language.t("openwork.task.artifacts")}
+                  </h3>
+                  <ButtonV2 size="small" variant="outline" onClick={props.onVerifyArtifacts}>
+                    {language.t("openwork.task.verify")}
+                  </ButtonV2>
+                </div>
+                <Show
+                  when={current.artifacts?.length}
+                  fallback={
+                    <p class="m-0 text-[10px] leading-4 text-v2-text-text-muted">
+                      {language.t("openwork.task.noArtifacts")}
+                    </p>
+                  }
+                >
+                  <div class="space-y-2">
+                    <For each={current.artifacts ?? []}>
+                      {(artifact) => (
+                        <div class="rounded-[7px] border border-v2-border-border-muted bg-v2-background-bg-base px-2.5 py-2">
+                          <div class="flex min-w-0 items-center gap-2">
+                            <span class={`size-1.5 shrink-0 rounded-full ${verificationColor(artifact.status)}`} />
+                            <div class="min-w-0 flex-1">
+                              <div
+                                class="truncate text-[11px] text-v2-text-text-base [font-weight:560]"
+                                title={artifact.path}
+                              >
+                                {artifact.name}
+                              </div>
+                              <div class="text-[9px] text-v2-text-text-muted">
+                                {artifactKindLabel(artifact.kind, language.t)} ·{" "}
+                                {verificationStatusLabel(artifact.status, language.t)}
+                              </div>
+                            </div>
+                            <Show when={artifact.path}>
+                              {(path) => (
+                                <ButtonV2
+                                  size="small"
+                                  variant="ghost-muted"
+                                  onClick={() => props.onOpenArtifact(path())}
+                                >
+                                  {language.t("common.open")}
+                                </ButtonV2>
+                              )}
+                            </Show>
+                          </div>
+                          <div class="mt-2 space-y-1 border-t border-v2-border-border-muted pt-1.5">
+                            <For each={artifact.checks}>
+                              {(check) => (
+                                <div
+                                  class="flex min-w-0 items-center gap-1.5 text-[9px] leading-3.5"
+                                  title={check.evidence}
+                                >
+                                  <span class={`size-1 shrink-0 rounded-full ${verificationColor(check.status)}`} />
+                                  <span class="min-w-0 flex-1 truncate text-v2-text-text-muted">
+                                    {verificationCheckLabel(check.id, language.t)}
+                                  </span>
+                                </div>
+                              )}
+                            </For>
+                          </div>
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </Show>
+              </section>
+
               <section aria-label={language.t("openwork.task.activity")}>
                 <h3 class="m-0 mb-2 text-[11px] uppercase tracking-[0.08em] text-v2-text-text-muted [font-weight:600]">
                   {language.t("openwork.task.activity")}
@@ -330,4 +402,50 @@ function skillPhaseLabel(phase: WorkSkillPhase, t: Translate) {
     verify: "openwork.skillPhase.verify",
   } as const
   return t(keys[phase])
+}
+
+function verificationColor(status: WorkVerificationStatus) {
+  if (status === "passed") return "bg-v2-state-fg-success"
+  if (status === "failed") return "bg-v2-state-fg-danger"
+  return "bg-v2-state-fg-warning"
+}
+
+function verificationStatusLabel(status: WorkVerificationStatus, t: Translate) {
+  const keys = {
+    passed: "openwork.artifact.status.passed",
+    warning: "openwork.artifact.status.warning",
+    failed: "openwork.artifact.status.failed",
+  } as const
+  return t(keys[status])
+}
+
+function artifactKindLabel(kind: WorkArtifactKind, t: Translate) {
+  const keys = {
+    document: "openwork.artifact.kind.document",
+    presentation: "openwork.artifact.kind.presentation",
+    spreadsheet: "openwork.artifact.kind.spreadsheet",
+    research: "openwork.artifact.kind.research",
+    software: "openwork.artifact.kind.software",
+    package: "openwork.artifact.kind.package",
+    file: "openwork.artifact.kind.file",
+  } as const
+  return t(keys[kind])
+}
+
+function verificationCheckLabel(id: WorkVerificationCheckID, t: Translate) {
+  const keys = {
+    exists: "openwork.artifact.check.exists",
+    nonempty: "openwork.artifact.check.nonempty",
+    format: "openwork.artifact.check.format",
+    structure: "openwork.artifact.check.structure",
+    editable: "openwork.artifact.check.editable",
+    render: "openwork.artifact.check.render",
+    citations: "openwork.artifact.check.citations",
+    formulas: "openwork.artifact.check.formulas",
+    changes: "openwork.artifact.check.changes",
+    tests: "openwork.artifact.check.tests",
+    build: "openwork.artifact.check.build",
+    smoke: "openwork.artifact.check.smoke",
+  } as const
+  return t(keys[id])
 }

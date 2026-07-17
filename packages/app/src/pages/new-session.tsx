@@ -1,4 +1,4 @@
-import { Show, createEffect, createMemo, createResource, createSignal, onCleanup, untrack } from "solid-js"
+import { Show, createEffect, createMemo, createResource, createSignal, untrack } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Portal } from "solid-js/web"
 import { useSearchParams } from "@solidjs/router"
@@ -34,10 +34,11 @@ import { Persist, persisted } from "@/utils/persist"
 import createPresence from "solid-presence"
 import { useLocal } from "@/context/local"
 import { createPromptModelSelection } from "@/pages/session/composer/prompt-model-selection"
+import { useTabs, type DraftTab } from "@/context/tabs"
+import type { WorkSpec } from "@/openwork/work-spec"
 
 const workspaceBarEnabled = import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"
 const providerTipDismissalDuration = 30 * 24 * 60 * 60 * 1000
-const providerTipExitDuration = 250
 
 /**
  * The `/new-session` draft page. Unlike `session.tsx`, this only renders the prompt
@@ -60,7 +61,17 @@ export default function NewSessionPage() {
   const route = useSessionKey()
   const [searchParams, setSearchParams] = useSearchParams<{ draftId?: string; prompt?: string }>()
   const local = useLocal()
+  const tabs = useTabs()
   const model = createPromptModelSelection({ agent: local.agent.current })
+  const draft = createMemo(() => {
+    const id = searchParams.draftId
+    if (!id) return undefined
+    return tabs.store.find((item): item is DraftTab => item.type === "draft" && item.draftID === id)
+  })
+  const workSpec = createMemo(() => draft()?.workSpec)
+  const autoStart = createMemo(() => draft()?.autoStart === true)
+  const [autoStarting, setAutoStarting] = createSignal(false)
+  const starting = createMemo(() => autoStart() || autoStarting())
 
   useComposerCommands({ model })
 
@@ -153,6 +164,9 @@ export default function NewSessionPage() {
         <div class="@container relative flex flex-col min-h-0 h-full flex-1">
           <div class="flex-1 min-h-0 overflow-hidden rounded-[10px]">
             <NewSessionDesignView>
+              <Show when={starting() && workSpec()} keyed>
+                {(spec) => <OpenWorkStartingTask spec={spec} />}
+              </Show>
               <div class={NEW_SESSION_CONTENT_WIDTH}>
                 <Show
                   when={prompt.ready() || promptReady()}
@@ -164,6 +178,7 @@ export default function NewSessionPage() {
                 >
                   <div class="flex flex-col" classList={{ "gap-8": showWorkspaceBar(), "gap-3": !showWorkspaceBar() }}>
                     <PromptInput
+                      class={starting() ? "hidden" : undefined}
                       controls={inputController()}
                       variant="new-session"
                       ref={(el) => {
@@ -172,6 +187,15 @@ export default function NewSessionPage() {
                       newSessionWorktree={newSessionWorktree()}
                       onNewSessionWorktreeReset={() => setStore("worktree", undefined)}
                       onSubmit={() => comments.clear()}
+                      autoSubmit={autoStart()}
+                      onAutoSubmitStart={() => {
+                        setAutoStarting(true)
+                        const id = searchParams.draftId
+                        if (id) tabs.updateDraft(id, { autoStart: false })
+                      }}
+                      onAutoSubmitSettled={() => {
+                        setAutoStarting(false)
+                      }}
                       toolbar={
                         <Show when={!projectController.selected()}>
                           <PromptProjectAddButton controller={projectController} />
@@ -214,6 +238,7 @@ export default function NewSessionPage() {
               </div>
             </NewSessionDesignView>
             <ProviderTip
+              hidden={starting()}
               ready={() => serverSync().child(sdk().directory)[0].provider_ready}
               connected={() => providers.paid().length > 0}
               openProviders={openProviderSettings}
@@ -225,7 +250,56 @@ export default function NewSessionPage() {
   )
 }
 
-function ProviderTip(props: { ready: () => boolean; connected: () => boolean; openProviders: () => void }) {
+function OpenWorkStartingTask(props: { spec: WorkSpec }) {
+  const language = useLanguage()
+  return (
+    <section
+      data-component="openwork-task-starting"
+      class="absolute inset-0 z-10 flex items-center justify-center bg-v2-background-bg-base px-6"
+      aria-live="polite"
+    >
+      <div class="w-full max-w-[620px] rounded-[14px] border border-v2-border-border-muted bg-v2-background-bg-layer-01 p-6 shadow-[var(--v2-elevation-raised)]">
+        <div class="flex items-start gap-3">
+          <div class="flex size-9 shrink-0 items-center justify-center rounded-[9px] bg-v2-background-bg-layer-03">
+            <IconV2 name="status-active" class="animate-pulse" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="text-[11px] uppercase tracking-[0.08em] text-v2-text-text-muted [font-weight:600]">
+              {language.t("openwork.starting.title")}
+            </div>
+            <h1 class="m-0 mt-1 text-[18px] leading-6 text-v2-text-text-base [font-weight:620]">
+              {props.spec.goal}
+            </h1>
+          </div>
+        </div>
+        <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div class="min-w-0 rounded-[8px] bg-v2-background-bg-base px-3 py-2">
+            <div class="text-[10px] text-v2-text-text-muted">{language.t("openwork.workspace.label")}</div>
+            <div class="mt-0.5 truncate text-[12px] text-v2-text-text-base" title={props.spec.workspace}>
+              {props.spec.workspace}
+            </div>
+          </div>
+          <div class="min-w-0 rounded-[8px] bg-v2-background-bg-base px-3 py-2">
+            <div class="text-[10px] text-v2-text-text-muted">{language.t("openwork.model.label")}</div>
+            <div class="mt-0.5 truncate text-[12px] text-v2-text-text-base">
+              {props.spec.model?.name ?? `${props.spec.model?.providerID}/${props.spec.model?.modelID}`}
+            </div>
+          </div>
+        </div>
+        <p class="m-0 mt-4 text-[12px] leading-5 text-v2-text-text-muted">
+          {language.t("openwork.starting.description")}
+        </p>
+      </div>
+    </section>
+  )
+}
+
+function ProviderTip(props: {
+  hidden?: boolean
+  ready: () => boolean
+  connected: () => boolean
+  openProviders: () => void
+}) {
   const language = useLanguage()
   const [persistedState, setPersistedState, , persistedReady] = persisted(
     Persist.global("new-session.provider-tip"),
@@ -234,6 +308,7 @@ function ProviderTip(props: { ready: () => boolean; connected: () => boolean; op
   const visible = createMemo(
     () =>
       props.ready() &&
+      !props.hidden &&
       persistedReady() &&
       !props.connected() &&
       Date.now() - persistedState.dismissedAt >= providerTipDismissalDuration,

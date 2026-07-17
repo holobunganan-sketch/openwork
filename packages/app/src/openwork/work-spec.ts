@@ -12,6 +12,13 @@ export type { WorkKind, WorkOutputFormat } from "./work-intent"
 
 export type WorkAutonomy = "plan" | "collaborate" | "agent"
 
+export type WorkModel = {
+  providerID: string
+  modelID: string
+  name?: string
+  variant?: string
+}
+
 export type WorkSpec = {
   version: 1
   goal: string
@@ -28,6 +35,8 @@ export type WorkSpec = {
   skillRoute: WorkSkillRouteStep[]
   questionPolicy: "only-material"
   permissions: WorkPermissions
+  workspace?: string
+  model?: WorkModel
 }
 
 const defaults: Record<WorkKind, { deliverables: string[]; acceptanceCriteria: string[] }> = {
@@ -116,6 +125,8 @@ export function createWorkSpec(input: {
   kind?: WorkKind
   autonomy?: WorkAutonomy
   permissions?: WorkPermissions
+  workspace?: string
+  model?: WorkModel
 }): WorkSpec {
   const goal = input.prompt.trim()
   const intent = compileWorkIntent(goal)
@@ -130,6 +141,7 @@ export function createWorkSpec(input: {
     ...intent.requestedFormats.map((format) => `The ${workOutputFormatLabel(format)} opens successfully`),
     ...intent.constraints.map((constraint) => `Requested constraint is satisfied: ${constraint}`),
   ])
+  const workspace = input.workspace?.trim()
   return {
     version: 1,
     goal,
@@ -146,6 +158,8 @@ export function createWorkSpec(input: {
     skillRoute,
     questionPolicy: "only-material",
     permissions: input.permissions ?? defaultWorkPermissions(autonomy),
+    ...(workspace ? { workspace } : {}),
+    ...(input.model ? { model: { ...input.model } } : {}),
   }
 }
 
@@ -153,6 +167,8 @@ export function normalizeWorkSpec(spec: WorkSpec): WorkSpec {
   const intent = compileWorkIntent(spec.goal)
   const defaults = harnessDefaults[spec.kind]
   const skillRoute = spec.skillRoute ?? routeWorkSkills(spec.kind)
+  const workspace = spec.workspace?.trim()
+  const model = normalizeWorkModel(spec.model)
   return {
     ...spec,
     constraints: spec.constraints ?? intent.constraints,
@@ -164,6 +180,8 @@ export function normalizeWorkSpec(spec: WorkSpec): WorkSpec {
     skillRoute,
     questionPolicy: spec.questionPolicy ?? "only-material",
     permissions: spec.permissions ?? defaultWorkPermissions(spec.autonomy),
+    ...(workspace ? { workspace } : {}),
+    ...(model ? { model } : {}),
   }
 }
 
@@ -177,6 +195,8 @@ export function migrateWorkSpec(value: unknown): WorkSpec | undefined {
     kind,
     autonomy,
     permissions: migratePermissions(value.permissions, autonomy),
+    workspace: typeof value.workspace === "string" ? value.workspace : undefined,
+    model: normalizeWorkModel(value.model),
   })
   const requestedFormats = stringArray(value.requestedFormats).filter(isWorkOutputFormat)
   const confidence = value.intentConfidence
@@ -210,6 +230,8 @@ export function formatWorkSpecContext(spec: WorkSpec) {
     `Goal: ${spec.goal}`,
     `Work type: ${spec.kind}`,
     `Execution mode: ${spec.autonomy}. ${autonomy}`,
+    `Workspace: ${spec.workspace ?? "the selected session workspace"}`,
+    `Model: ${spec.model ? `${spec.model.name ?? `${spec.model.providerID}/${spec.model.modelID}`}${spec.model.variant ? ` (${spec.model.variant})` : ""}` : "the selected session model"}`,
     `Expected deliverables: ${spec.deliverables.join("; ")}`,
     `Requested formats: ${spec.requestedFormats.length ? spec.requestedFormats.join("; ") : "none explicitly requested"}`,
     `Explicit constraints: ${spec.constraints.length ? spec.constraints.join("; ") : "none supplied"}`,
@@ -238,6 +260,21 @@ function unique(values: string[]) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function normalizeWorkModel(value: unknown): WorkModel | undefined {
+  if (!isRecord(value) || typeof value.providerID !== "string" || typeof value.modelID !== "string") return undefined
+  const providerID = value.providerID.trim()
+  const modelID = value.modelID.trim()
+  if (!providerID || !modelID) return undefined
+  const name = typeof value.name === "string" ? value.name.trim() : ""
+  const variant = typeof value.variant === "string" ? value.variant.trim() : ""
+  return {
+    providerID,
+    modelID,
+    ...(name ? { name } : {}),
+    ...(variant ? { variant } : {}),
+  }
 }
 
 function stringArray(value: unknown, fallback: string[] = []) {

@@ -637,6 +637,17 @@ export const dict = {
   "openwork.composer.placeholder":
     "Describe what you want to accomplish. OpenWork will inspect the workspace, fill in safe defaults, and verify the result.",
   "openwork.composer.start": "Start task",
+  "openwork.target.label": "Task target",
+  "openwork.workspace.label": "Workspace",
+  "openwork.workspace.choose": "Choose project folder",
+  "openwork.workspace.browse": "Open another project folder…",
+  "openwork.workspace.required": "Choose a project folder before starting the task.",
+  "openwork.model.label": "Model",
+  "openwork.model.choose": "Choose model",
+  "openwork.model.required": "Choose or connect a model before starting the task.",
+  "openwork.starting.title": "Starting OpenWork task",
+  "openwork.starting.description":
+    "Creating the task session, applying its workspace and model, and sending the execution contract.",
   "openwork.permission.controls": "Controls",
   "openwork.permission.title": "Scoped permissions",
   "openwork.permission.description":

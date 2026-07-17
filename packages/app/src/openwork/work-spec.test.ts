@@ -22,10 +22,18 @@ describe("OpenWork task specification", () => {
 
   test("creates a synthetic execution contract with acceptance criteria", () => {
     const context = formatWorkSpecContext(
-      createWorkSpec({ prompt: "Build a presentation", kind: "presentation", autonomy: "agent" }),
+      createWorkSpec({
+        prompt: "Build a presentation",
+        kind: "presentation",
+        autonomy: "agent",
+        workspace: "C:/Work/Quarterly",
+        model: { providerID: "opencode-go", modelID: "gpt-5", name: "GPT-5", variant: "high" },
+      }),
     )
     expect(context).toContain("<openwork_task_contract")
     expect(context).toContain("Execution mode: agent")
+    expect(context).toContain("Workspace: C:/Work/Quarterly")
+    expect(context).toContain("Model: GPT-5 (high)")
     expect(context).toContain("No text or objects overflow or overlap")
     expect(context).toContain("inspect=[source material and audience inspection]")
     expect(context).toContain("verify=[slide rendering and overflow inspection]")
@@ -58,6 +66,8 @@ describe("OpenWork task specification", () => {
       deliverables: ["My existing workbook"],
       acceptanceCriteria: ["Totals reconcile"],
       permissions: { read: "allow", workspace: "allow", commands: "ask" },
+      workspace: " C:/Work/Analysis ",
+      model: { providerID: "opencode-go", modelID: "gpt-5", name: " GPT-5 " },
     })
 
     expect(migrated?.deliverables).toEqual(["My existing workbook"])
@@ -65,5 +75,7 @@ describe("OpenWork task specification", () => {
     expect(migrated?.requestedFormats).toEqual(["xlsx"])
     expect(migrated?.constraints).toContain("Deliverable remains editable")
     expect(migrated?.permissions.destructive).toBe("ask")
+    expect(migrated?.workspace).toBe("C:/Work/Analysis")
+    expect(migrated?.model).toEqual({ providerID: "opencode-go", modelID: "gpt-5", name: "GPT-5" })
   })
 })

@@ -24,6 +24,8 @@ export interface MockServerConfig {
   fileContent?: (path: string) => unknown | Promise<unknown>
   findFiles?: (input: { query: string; dirs?: string; limit?: number }) => unknown
   sessionStatus?: unknown
+  createSession?: () => ({ id: string } & Record<string, unknown>)
+  onPrompt?: (input: { sessionID: string; body: unknown }) => void
 }
 
 export async function mockOpenCodeServer(page: Page, config: MockServerConfig) {
@@ -67,6 +69,9 @@ export async function mockOpenCodeServer(page: Page, config: MockServerConfig) {
     if (path === "/question")
       return json(route, typeof config.questions === "function" ? config.questions() : (config.questions ?? []))
     if (path === "/session/status") return json(route, config.sessionStatus ?? {})
+    if (path === "/session" && route.request().method() === "POST" && config.createSession) {
+      return json(route, config.createSession())
+    }
     if (path === "/vcs/diff" && config.vcsDiff) return json(route, config.vcsDiff)
     if (path === "/file" && config.fileList)
       return json(route, await config.fileList(url.searchParams.get("path") ?? ""))
@@ -115,8 +120,24 @@ export async function mockOpenCodeServer(page: Page, config: MockServerConfig) {
     if (todoMatch) return json(route, config.todos?.(todoMatch[1]!) ?? [])
     if (/^\/session\/[^/]+\/(children|diff)$/.test(path)) return json(route, [])
 
+    const promptAsyncMatch = path.match(/^\/session\/([^/]+)\/prompt_async$/)
+    if (promptAsyncMatch && route.request().method() === "POST") {
+      const body = postDataJSON(route)
+      config.onPrompt?.({ sessionID: promptAsyncMatch[1]!, body })
+      return route.fulfill({
+        status: 204,
+        headers: { "access-control-allow-origin": "*" },
+        body: "",
+      })
+    }
+
     const messagesMatch = path.match(/^\/session\/([^/]+)\/message$/)
     if (messagesMatch) {
+      if (route.request().method() === "POST") {
+        const body = postDataJSON(route)
+        config.onPrompt?.({ sessionID: messagesMatch[1], body })
+        return json(route, {})
+      }
       const token = url.searchParams.get("before") ?? undefined
       const before = token ? cursors.get(token) : undefined
       if (token && !before) return json(route, { error: "Invalid cursor" }, undefined, 400)
@@ -172,6 +193,14 @@ function json(route: Route, body: unknown, headers?: Record<string, string>, sta
     },
     body: JSON.stringify(body ?? null),
   })
+}
+
+function postDataJSON(route: Route) {
+  try {
+    return route.request().postDataJSON()
+  } catch {
+    return undefined
+  }
 }
 
 function sse(route: Route, events?: unknown[], retry?: number) {

@@ -241,6 +241,7 @@ export function ModelSelectorPopoverV2(props: {
   triggerAs?: ValidComponent
   triggerProps?: ModelSelectorTriggerProps
   onClose?: () => void
+  onManage?: () => void
 }) {
   const model = props.model ?? useLocal().model
   const language = useLanguage()
@@ -321,6 +322,10 @@ export function ModelSelectorPopoverV2(props: {
     restoreTrigger = false
     setOpen(false)
     afterClose(() => {
+      if (props.onManage) {
+        props.onManage()
+        return
+      }
       void import("./dialog-manage-models").then((x) => {
         dialog.show(() => <x.DialogManageModelsV2 />)
       })

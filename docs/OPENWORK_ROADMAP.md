@@ -1,4 +1,4 @@
-# OpenWork 0.1.0 delivery tracker
+# OpenWork delivery tracker
 
 This file mirrors the GitHub issue tracker so the delivery state remains reviewable even when repository Issues are temporarily unavailable. The `openwork-project-bootstrap.yml` workflow creates the corresponding labels and issues after Issues are enabled.
 
@@ -29,5 +29,5 @@ Formal release gates are defined in the release workflow and release documentati
 - [x] Add artifact management and type-specific verification
 - [x] Add user/project memory with view, edit, export, and delete controls
 - [x] Add wish-prompt evaluations, accessibility, visual regression, and migration coverage
-- [ ] Publish and validate `openwork-v0.2.0-rc.1`
-- [ ] Fix RC defects and publish `openwork-v0.2.0`
+- [x] Publish and validate `openwork-v0.2.0-rc.1`
+- [x] Fix RC defects and publish `openwork-v0.2.0`

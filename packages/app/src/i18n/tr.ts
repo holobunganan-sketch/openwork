@@ -538,7 +538,7 @@ export const dict = {
   "toast.session.listFailed.title": "{{project}} için oturumlar yüklenemedi",
 
   "toast.update.title": "Güncelleme mevcut",
-  "toast.update.description": "OpenCode'un yeni bir sürümü ({{version}}) yüklemeye hazır.",
+  "toast.update.description": "OpenWork'un yeni bir sürümü ({{version}}) yüklemeye hazır.",
   "toast.update.action.installRestart": "Yükle ve yeniden başlat",
   "toast.update.action.notYet": "Şimdi değil",
 
@@ -553,7 +553,7 @@ export const dict = {
   "error.page.action.checking": "Kontrol ediliyor...",
   "error.page.action.checkUpdates": "Güncellemeleri kontrol et",
   "error.page.action.updateTo": "{{version}} sürümüne güncelle",
-  "error.page.report.prefix": "Lütfen bu hatayı OpenCode ekibine bildirin",
+  "error.page.report.prefix": "Lütfen bu hatayı OpenWork ekibine bildirin",
   "error.page.report.discord": "Discord üzerinden",
   "error.page.version": "Sürüm: {{version}}",
 
@@ -751,7 +751,7 @@ export const dict = {
   "sidebar.empty.title": "Açık proje yok",
   "sidebar.empty.description": "Başlamak için bir proje açın",
 
-  "app.name.desktop": "OpenCode Masaüstü",
+  "app.name.desktop": "OpenWork Desktop",
 
   "settings.section.desktop": "Masaüstü",
   "settings.section.server": "Sunucu",
@@ -770,19 +770,19 @@ export const dict = {
   "settings.general.section.display": "Ekran",
 
   "settings.general.row.language.title": "Dil",
-  "settings.general.row.language.description": "OpenCode'un görünüm dilini değiştirin",
+  "settings.general.row.language.description": "OpenWork'un görünüm dilini değiştirin",
   "settings.general.row.shell.title": "Terminal Kabuğu",
   "settings.general.row.shell.description":
     "Terminalinizde kullanılacak kabuğu seçin. Uyumlu kabuklar, ajan araç çağrılarında da kullanılır.",
   "settings.general.row.shell.autoDefault": "Otomatik (Varsayılan)",
   "settings.general.row.shell.terminalOnly": "yalnızca terminal",
   "settings.general.row.appearance.title": "Görünüm",
-  "settings.general.row.appearance.description": "OpenCode'un cihazınızdaki görünümünü özelleştirin",
+  "settings.general.row.appearance.description": "OpenWork'un cihazınızdaki görünümünü özelleştirin",
   "settings.general.row.colorScheme.title": "Renk şeması",
   "settings.general.row.colorScheme.description":
     "OpenCode'un sistem, açık veya koyu temayı takip etip etmeyeceğini seçin",
   "settings.general.row.theme.title": "Tema",
-  "settings.general.row.theme.description": "OpenCode'un temasını özelleştirin.",
+  "settings.general.row.theme.description": "OpenWork'un temasını özelleştirin.",
   "settings.general.row.font.title": "Kod Yazı Tipi",
   "settings.general.row.font.description": "Kod bloklarında kullanılan yazı tipini özelleştirin",
   "settings.general.row.terminalFont.title": "Terminal yazı tipi",
@@ -838,7 +838,7 @@ export const dict = {
   "settings.general.row.releaseNotes.description": "Güncellemelerden sonra Yenilikler bildirimlerini göster",
 
   "settings.updates.row.startup.title": "Başlangıçta güncellemeleri kontrol et",
-  "settings.updates.row.startup.description": "OpenCode başladığında otomatik güncelleme kontrolü yap",
+  "settings.updates.row.startup.description": "OpenWork başladığında otomatik güncelleme kontrolü yap",
   "settings.updates.row.check.title": "Güncellemeleri kontrol et",
   "settings.updates.row.check.description": "Elle güncelleme kontrolü yap ve varsa yükle",
   "settings.updates.action.checkNow": "Şimdi kontrol et",
@@ -846,7 +846,7 @@ export const dict = {
   "settings.updates.action.downloading": "İndiriliyor...",
   "settings.updates.action.installing": "Kuruluyor...",
   "settings.updates.toast.latest.title": "Güncelsiniz",
-  "settings.updates.toast.latest.description": "OpenCode'un en son sürümünü kullanıyorsunuz.",
+  "settings.updates.toast.latest.description": "OpenWork'un en son sürümünü kullanıyorsunuz.",
 
   "sound.option.none": "Yok",
   "sound.option.alert01": "Uyarı 01",
@@ -1044,6 +1044,9 @@ export const dict = {
   "session.header.open.finder": "Finder",
   "session.header.open.fileExplorer": "Dosya Gezgini",
   "session.header.open.fileManager": "Dosya Yöneticisi",
+  "session.header.reveal.finder": "Finder'da Göster",
+  "session.header.reveal.fileExplorer": "Dosya Gezgini'nde Göster",
+  "session.header.reveal.containingFolder": "İçeren klasörü aç",
   "session.header.open.app.vscode": "VS Code",
   "session.header.open.app.cursor": "Cursor",
   "session.header.open.app.zed": "Zed",

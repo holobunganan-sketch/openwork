@@ -1,6 +1,6 @@
-# OpenCode Desktop
+# OpenWork Desktop
 
-The OpenCode Desktop app, built with Electron.
+The OpenWork desktop app, built with Electron and based on the OpenCode engine.
 
 ## Development
 

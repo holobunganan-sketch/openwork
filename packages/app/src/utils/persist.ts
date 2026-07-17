@@ -25,7 +25,7 @@ type PersistTarget = {
 
 const LEGACY_STORAGE = "default.dat"
 const GLOBAL_STORAGE = "opencode.global.dat"
-const WINDOW_STORAGE = "opencode.window"
+const WINDOW_STORAGE = "openwork.window"
 const LOCAL_PREFIX = "opencode."
 const fallback = new Map<string, boolean>()
 

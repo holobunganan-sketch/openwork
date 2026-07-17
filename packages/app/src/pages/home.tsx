@@ -76,7 +76,6 @@ import {
 } from "@/context/global-sync/home-session-index"
 import { OpenWorkLaunchpad } from "@/components/openwork-control-center"
 import type { WorkSpec } from "@/openwork/work-spec"
-import { ModelsProvider } from "@/context/models"
 
 const HOME_SESSION_LIMIT = 64
 const HOME_SESSION_HEADER_STICKY_TOP = 12
@@ -784,19 +783,17 @@ export function NewHome() {
             </div>
             <div class="-mr-3 min-h-[calc(100cqh-72px)] lg:min-h-[calc(100cqh-96px)]">
               <div class="pr-3 pt-3">
-                <ModelsProvider directory={() => newSessionProject()?.worktree}>
-                  <OpenWorkLaunchpad
-                    disabled={!focusedServer()}
-                    workspace={taskWorkspace()}
-                    workspaces={projects().map((project) => ({
-                      directory: project.worktree,
-                      label: displayName(project),
-                    }))}
-                    onWorkspaceSelect={selectTaskWorkspace}
-                    onWorkspaceBrowse={browseTaskWorkspace}
-                    onTask={openQuickTask}
-                  />
-                </ModelsProvider>
+                <OpenWorkLaunchpad
+                  disabled={!focusedServer()}
+                  workspace={taskWorkspace()}
+                  workspaces={projects().map((project) => ({
+                    directory: project.worktree,
+                    label: displayName(project),
+                  }))}
+                  onWorkspaceSelect={selectTaskWorkspace}
+                  onWorkspaceBrowse={browseTaskWorkspace}
+                  onTask={openQuickTask}
+                />
               </div>
               <Show
                 when={!sessionLoad.isLoading}

@@ -11,8 +11,11 @@ import { useGlobal } from "./global"
 import { ServerConnection, useServer } from "./server"
 import { type DraftTab, useTabs } from "./tabs"
 import { useSettings } from "./settings"
+import { useOpenWorkTasks } from "./openwork-tasks"
 import { requireServerKey } from "@/utils/session-route"
 import type { ServerScope } from "@/utils/server-scope"
+import { normalizeWorkSpec } from "@/openwork/work-spec"
+import { workPermissionAllows } from "@/openwork/work-permissions"
 import {
   acceptKey,
   directoryAcceptKey,
@@ -61,6 +64,7 @@ export const { use: usePermission, provider: PermissionProvider } = createSimple
     const server = useServer()
     const tabs = useTabs()
     const settings = useSettings()
+    const workTasks = useOpenWorkTasks()
     const owner = getOwner()
     const states = new Map<ServerScope, { key: ServerConnection.Key; dispose: () => void; state: PermissionState }>()
 
@@ -90,7 +94,15 @@ export const { use: usePermission, provider: PermissionProvider } = createSimple
         (dispose) => ({
           key,
           dispose,
-          state: createServerPermissionState({ sdk: ctx.sdk, sync: ctx.sync }),
+          state: createServerPermissionState({
+            sdk: ctx.sdk,
+            sync: ctx.sync,
+            taskPermission(permission, sessionID) {
+              const task = workTasks.get(ctx.sdk.scope, sessionID)
+              if (!task) return
+              return workPermissionAllows(normalizeWorkSpec(task.spec).permissions, permission)
+            },
+          }),
         }),
         owner ?? undefined,
       )
@@ -186,7 +198,11 @@ export const { use: usePermission, provider: PermissionProvider } = createSimple
 type PermissionState = ReturnType<typeof createServerPermissionState>
 type PermissionEvent = Parameters<Parameters<ServerSDK["event"]["listen"]>[0]>[0]
 
-function createServerPermissionState(input: { sdk: ServerSDK; sync: ServerSync }) {
+function createServerPermissionState(input: {
+  sdk: ServerSDK
+  sync: ServerSync
+  taskPermission?: (permission: PermissionRequest, sessionID: string) => boolean | undefined
+}) {
   const [store, setStore, _, ready] = persisted(
     {
       ...Persist.serverGlobal(input.sdk.scope, "permission", ["permission.v3"]),
@@ -277,7 +293,20 @@ function createServerPermissionState(input: { sdk: ServerSDK; sync: ServerSync }
     return isDirectoryAutoAccepting(store.autoAccept, directory)
   }
 
+  function taskPermission(permission: PermissionRequest, rootID?: string) {
+    const direct = input.taskPermission?.(permission, permission.sessionID)
+    if (direct !== undefined) return direct
+    if (!rootID || rootID === permission.sessionID) return
+    return input.taskPermission?.(permission, rootID)
+  }
+
+  function taskPermissionPeek(permission: PermissionRequest) {
+    return taskPermission(permission, input.sync.session.lineage.peek(permission.sessionID)?.root.id)
+  }
+
   function shouldAutoRespond(permission: PermissionRequest, directory?: string) {
+    const scoped = taskPermissionPeek(permission)
+    if (scoped !== undefined) return scoped
     return autoRespondsPermission(store.autoAccept, sessions(directory), permission, directory)
   }
 
@@ -287,12 +316,18 @@ function createServerPermissionState(input: { sdk: ServerSDK; sync: ServerSync }
   }
 
   async function shouldAutoRespondResolved(permission: PermissionRequest, directory?: string) {
+    const scoped = taskPermissionPeek(permission)
+    if (scoped !== undefined) return scoped
+    if (!input.sync.session.lineage.peek(permission.sessionID)) {
+      const lineage = await input.sync.session.lineage.resolve(permission.sessionID).catch(() => undefined)
+      if (meta.disposed) return false
+      const resolved = taskPermission(permission, lineage?.root.id)
+      if (resolved !== undefined) return resolved
+    }
     const override = sessionAutoAccept(store.autoAccept, sessions(directory), permission, directory)
     if (override !== undefined) return override
     if (input.sync.session.lineage.peek(permission.sessionID)) return shouldAutoRespond(permission, directory)
-    const lineage = await input.sync.session.lineage.resolve(permission.sessionID).catch(() => undefined)
-    if (meta.disposed || !lineage) return false
-    return shouldAutoRespond(permission, directory)
+    return false
   }
 
   async function respondPending(

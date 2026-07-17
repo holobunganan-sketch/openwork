@@ -2,6 +2,8 @@
 
 OpenWork 0.2 moves the desktop product from an OpenCode-shaped control surface to a task-first general-work agent. The OpenCode engine remains the compatible execution core. OpenWork owns the task contract, context assembly, permissions, checkpoints, artifacts, verification, product navigation, and desktop settings around it.
 
+The implemented harness now persists a per-task Context Graph with source provenance and explicit assumptions, composes inspect/create/verify Skill capability routes by work type, and enforces independent workspace, command, network, external, and destructive permission scopes. Destructive actions always require approval, including when the task uses Agent autonomy.
+
 ## Product principles
 
 - The home screen starts work. Configuration belongs in Settings.

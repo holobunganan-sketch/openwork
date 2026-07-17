@@ -27,6 +27,8 @@ describe("OpenWork task specification", () => {
     expect(context).toContain("<openwork_task_contract")
     expect(context).toContain("Execution mode: agent")
     expect(context).toContain("No text or objects overflow or overlap")
+    expect(context).toContain("inspect=[source material and audience inspection]")
+    expect(context).toContain("verify=[slide rendering and overflow inspection]")
     expect(context).toContain("verify")
   })
 })

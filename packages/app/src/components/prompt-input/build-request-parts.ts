@@ -6,6 +6,7 @@ import type { AgentPart, FileAttachmentPart, ImageAttachmentPart, Prompt } from 
 import { Identifier } from "@/utils/id"
 import { createCommentMetadata, formatCommentNote } from "@/utils/comment-note"
 import { formatWorkSpecContext, type WorkSpec } from "@/openwork/work-spec"
+import { createContextGraph, formatContextGraph, type ContextGraph } from "@/openwork/context-graph"
 
 type PromptRequestPart = (TextPartInput | FilePartInput | AgentPartInput) & { id: string }
 
@@ -20,7 +21,7 @@ type ContextFile = {
   preview?: string
 }
 
-type BuildRequestPartsInput = {
+export type BuildRequestPartsInput = {
   prompt: Prompt
   context: ContextFile[]
   images: ImageAttachmentPart[]
@@ -53,6 +54,39 @@ const parseCommentMentions = (comment: string) => {
 
 const isFileAttachment = (part: Prompt[number]): part is FileAttachmentPart => part.type === "file"
 const isAgentAttachment = (part: Prompt[number]): part is AgentPart => part.type === "agent"
+
+export function buildOpenWorkContextGraph(input: BuildRequestPartsInput): ContextGraph | undefined {
+  if (!input.workSpec) return
+  return createContextGraph({
+    workspace: input.sessionDirectory,
+    workSpec: input.workSpec,
+    sources: [
+      ...input.prompt.filter(isFileAttachment).map((item) => ({
+        kind: "file" as const,
+        label: item.filename ?? getFilename(item.path),
+        path: absolute(input.sessionDirectory, item.path),
+        provenance: "attachment" as const,
+      })),
+      ...input.context.map((item) => ({
+        kind: "file" as const,
+        label: getFilename(item.path),
+        path: absolute(input.sessionDirectory, item.path),
+        provenance: "context" as const,
+      })),
+      ...input.prompt.filter(isAgentAttachment).map((item) => ({
+        kind: "agent" as const,
+        label: item.name,
+        provenance: "mention" as const,
+      })),
+      ...input.images.map((item) => ({
+        kind: "image" as const,
+        label: item.filename,
+        path: item.sourcePath,
+        provenance: "attachment" as const,
+      })),
+    ],
+  })
+}
 
 const toOptimisticPart = (part: PromptRequestPart, sessionID: string, messageID: string): Part => {
   if (part.type === "text") {
@@ -216,10 +250,24 @@ export function buildRequestParts(input: BuildRequestPartsInput) {
       ]
     : []
 
-  requestParts.push(...contract, ...files, ...context, ...agents, ...images)
+  const contextGraph = buildOpenWorkContextGraph(input)
+  const graph = contextGraph
+    ? [
+        {
+          id: Identifier.ascending("part"),
+          type: "text" as const,
+          text: formatContextGraph(contextGraph),
+          synthetic: true,
+          metadata: { openwork_context_graph: contextGraph.version },
+        } satisfies PromptRequestPart,
+      ]
+    : []
+
+  requestParts.push(...contract, ...graph, ...files, ...context, ...agents, ...images)
 
   return {
     requestParts,
     optimisticParts: requestParts.map((part) => toOptimisticPart(part, input.sessionID, input.messageID)),
+    contextGraph,
   }
 }

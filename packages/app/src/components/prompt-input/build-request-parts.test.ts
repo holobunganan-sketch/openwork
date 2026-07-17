@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { Prompt } from "@/context/prompt"
+import { createWorkSpec } from "@/openwork/work-spec"
 import { buildRequestParts } from "./build-request-parts"
 
 describe("buildRequestParts", () => {
@@ -84,14 +85,7 @@ describe("buildRequestParts", () => {
       messageID: "msg_work",
       sessionID: "ses_work",
       sessionDirectory: "/workspace",
-      workSpec: {
-        version: 1,
-        goal: "build the deck",
-        kind: "presentation",
-        autonomy: "collaborate",
-        deliverables: ["An editable presentation file"],
-        acceptanceCriteria: ["No text or objects overflow or overlap"],
-      },
+      workSpec: createWorkSpec({ prompt: "build the deck", kind: "presentation", autonomy: "collaborate" }),
     })
 
     const contract = result.requestParts.find(
@@ -99,6 +93,17 @@ describe("buildRequestParts", () => {
     )
     expect(contract?.type).toBe("text")
     if (contract?.type === "text") expect(contract.text).toContain("No text or objects overflow or overlap")
+
+    const graph = result.requestParts.find(
+      (part) => part.type === "text" && part.synthetic && part.metadata?.openwork_context_graph === 1,
+    )
+    expect(graph?.type).toBe("text")
+    if (graph?.type === "text") {
+      expect(graph.text).toContain("<openwork_context_graph")
+      expect(graph.text).toContain('provenance=workspace path="/workspace"')
+      expect(graph.text).toContain("Question policy")
+    }
+    expect(result.contextGraph?.workspace).toBe("/workspace")
   })
 
   test("preserves an external attachment source path for the model", () => {

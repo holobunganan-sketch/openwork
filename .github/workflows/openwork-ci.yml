@@ -3,6 +3,8 @@ name: OpenWork CI
 on:
   pull_request:
     branches: [openwork-main]
+    paths-ignore:
+      - .github/openwork-release-control
   push:
     branches: [openwork-main]
   workflow_dispatch:

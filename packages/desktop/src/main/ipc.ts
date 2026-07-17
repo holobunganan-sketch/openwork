@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process"
-import { stat } from "node:fs/promises"
+import { stat, writeFile } from "node:fs/promises"
 import { basename } from "node:path"
 import { app, BrowserWindow, Notification, clipboard, dialog, ipcMain, shell } from "electron"
 import type { IpcMainEvent, IpcMainInvokeEvent } from "electron"
@@ -12,6 +12,9 @@ import { getStore, removeStoreFileIfEmpty } from "./store"
 import { getPinchZoomEnabled, getWindowID, setPinchZoomEnabled, setTitlebar, updateTitlebar } from "./windows"
 import type { UpdaterController } from "./updater-controller"
 import { createUpdaterSubscriptions } from "./updater-subscriptions"
+import type { OpenWorkSkillsManager } from "./openwork-skills"
+import type { OpenWorkMcpManager } from "./openwork-mcp"
+import type { OpenWorkUsage } from "@opencode-ai/app"
 
 const pickerFilters = (ext?: string[]) => {
   if (!ext || ext.length === 0) return undefined
@@ -40,6 +43,11 @@ type Deps = {
   setBackgroundColor: (color: string) => void
   exportDebugLogs: () => Promise<string>
   recordFatalRendererError: (error: FatalRendererError) => Promise<void> | void
+  openwork: {
+    skills: OpenWorkSkillsManager
+    mcp: OpenWorkMcpManager
+    usage: { get: () => Promise<OpenWorkUsage> }
+  }
 }
 
 export function registerIpcHandlers(deps: Deps) {
@@ -84,6 +92,42 @@ export function registerIpcHandlers(deps: Deps) {
   ipcMain.handle("record-fatal-renderer-error", (_event: IpcMainInvokeEvent, error: FatalRendererError) =>
     deps.recordFatalRendererError(error),
   )
+  ipcMain.handle("openwork-skills-list", () => deps.openwork.skills.list())
+  ipcMain.handle("openwork-skills-preview-zip", (_event: IpcMainInvokeEvent, data: ArrayBuffer | Uint8Array) =>
+    deps.openwork.skills.previewZip(data),
+  )
+  ipcMain.handle("openwork-skills-install-zip", (_event: IpcMainInvokeEvent, data: ArrayBuffer | Uint8Array) =>
+    deps.openwork.skills.installZip(data),
+  )
+  ipcMain.handle("openwork-skills-set-enabled", (_event: IpcMainInvokeEvent, id: string, enabled: boolean) =>
+    deps.openwork.skills.setEnabled(id, enabled),
+  )
+  ipcMain.handle("openwork-skills-uninstall", (_event: IpcMainInvokeEvent, id: string) =>
+    deps.openwork.skills.uninstall(id),
+  )
+  ipcMain.handle("openwork-skills-rollback", (_event: IpcMainInvokeEvent, id: string) =>
+    deps.openwork.skills.rollback(id),
+  )
+  ipcMain.handle("openwork-skills-export-zip", async (_event: IpcMainInvokeEvent, id: string) => {
+    const data = await deps.openwork.skills.exportZip(id)
+    const result = await dialog.showSaveDialog({ title: "Export OpenWork skill", defaultPath: `${id}.zip` })
+    if (result.canceled || !result.filePath) return null
+    await writeFile(result.filePath, data, { mode: 0o600 })
+    return result.filePath
+  })
+  ipcMain.handle("openwork-mcp-list", () => deps.openwork.mcp.list())
+  ipcMain.handle("openwork-mcp-preview-import", (_event: IpcMainInvokeEvent, input: string) =>
+    deps.openwork.mcp.previewImport(input),
+  )
+  ipcMain.handle("openwork-mcp-apply-import", (_event: IpcMainInvokeEvent, input: string) =>
+    deps.openwork.mcp.applyImport(input),
+  )
+  ipcMain.handle("openwork-mcp-set-enabled", (_event: IpcMainInvokeEvent, name: string, enabled: boolean) =>
+    deps.openwork.mcp.setEnabled(name, enabled),
+  )
+  ipcMain.handle("openwork-mcp-remove", (_event: IpcMainInvokeEvent, name: string) => deps.openwork.mcp.remove(name))
+  ipcMain.handle("openwork-mcp-restore-latest", () => deps.openwork.mcp.restoreLatest())
+  ipcMain.handle("openwork-usage-get", () => deps.openwork.usage.get())
   ipcMain.handle("store-get", (_event: IpcMainInvokeEvent, name: string, key: string) => {
     try {
       const store = getStore(name)

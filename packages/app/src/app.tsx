@@ -231,11 +231,17 @@ declare global {
     __OPENCODE__?: {
       deepLinks?: string[]
     }
-    api?: {
-      setTitlebar?: (theme: { mode: "light" | "dark"; scheme?: "system" | "light" | "dark" }) => Promise<void>
-      exportDebugLogs?: () => Promise<string>
-    }
   }
+}
+
+function optionalDesktopApi() {
+  return (
+    window as typeof window & {
+      api?: {
+        setTitlebar?: (theme: { mode: "light" | "dark"; scheme?: "system" | "light" | "dark" }) => Promise<void>
+      }
+    }
+  ).api
 }
 
 function QueryProvider(props: ParentProps) {
@@ -356,7 +362,7 @@ export function AppBaseProviders(props: ParentProps<{ locale?: Locale }>) {
       <Font />
       <ThemeProvider
         onThemeApplied={(_, mode, scheme) => {
-          void window.api?.setTitlebar?.({ mode, scheme })
+          void optionalDesktopApi()?.setTitlebar?.({ mode, scheme })
         }}
       >
         <LanguageProvider locale={props.locale}>

@@ -78,7 +78,7 @@ const getBase = (appId: string): Configuration => ({
     signtoolOptions: {
       sign: signWindows,
     },
-    target: ["nsis"],
+    target: ["nsis", "portable"],
     verifyUpdateCodeSignature: false,
   },
   nsis: {
@@ -93,6 +93,9 @@ const getBase = (appId: string): Configuration => ({
     artifactName: "OpenWork-Setup-${version}-windows-${arch}.${ext}",
     installerIcon: `resources/icons/icon.ico`,
     uninstallerIcon: `resources/icons/icon.ico`,
+  },
+  portable: {
+    artifactName: "OpenWork-Portable-${version}-windows-${arch}.${ext}",
   },
   linux: {
     icon: `resources/icons`,

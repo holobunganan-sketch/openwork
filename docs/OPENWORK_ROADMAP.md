@@ -39,5 +39,5 @@ Formal release gates are defined in the release workflow and release documentati
 - [x] Start a task directly from the task-first composer without returning to the legacy session shell
 - [x] Persist the selected workspace and model in the WorkSpec and active task workbench
 - [x] Add browser coverage for one-click task launch and server-backed prompt submission
-- [ ] Publish and validate `openwork-v0.2.1-rc.1`
-- [ ] Fix RC defects and publish `openwork-v0.2.1`
+- [x] Publish and validate `openwork-v0.2.1-rc.1`
+- [x] Fix RC defects and publish `openwork-v0.2.1`

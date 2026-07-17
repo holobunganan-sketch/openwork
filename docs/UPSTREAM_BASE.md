@@ -7,7 +7,7 @@
 - Initial baseline commit: `3a1c6df9e24672f0761a6ced18e1315d89334baf`
 - Baseline subject: `fix(app): deduplicate diff summaries linearly (#37414)`
 - Sync date: 2026-07-17
-- OpenWork product version: `0.1.0`
+- OpenWork product version: `0.2.0`
 
 ## Baseline policy
 

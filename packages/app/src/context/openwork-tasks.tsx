@@ -5,6 +5,7 @@ import { uuid } from "@/utils/uuid"
 import {
   addWorkCheckpoint,
   createWorkTask,
+  setWorkTaskArtifacts,
   setWorkTaskContext,
   transitionWorkTask,
   workTaskKey,
@@ -12,6 +13,7 @@ import {
   type WorkTaskStatus,
 } from "@/openwork/task-runtime"
 import type { ContextGraph } from "@/openwork/context-graph"
+import type { WorkArtifact } from "@/openwork/artifact-verifier"
 import type { WorkSpec } from "@/openwork/work-spec"
 
 const TASK_LIMIT = 200
@@ -89,6 +91,13 @@ export const { use: useOpenWorkTasks, provider: OpenWorkTasksProvider } = create
         const current = get(scope, sessionID)
         if (!current) return
         const next = setWorkTaskContext(current, context, Date.now())
+        replace(next)
+        return next
+      },
+      setArtifacts(scope: string, sessionID: string, artifacts: WorkArtifact[], at = Date.now()) {
+        const current = get(scope, sessionID)
+        if (!current) return
+        const next = setWorkTaskArtifacts(current, artifacts, at)
         replace(next)
         return next
       },

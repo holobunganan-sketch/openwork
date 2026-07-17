@@ -184,6 +184,7 @@ export function formatWorkSpecContext(spec: WorkSpec) {
       .map(([scope, decision]) => `${scope}=${decision}`)
       .join("; ")}`,
     "Question policy: ask only when a missing answer would materially change the deliverable, authorization, cost, or irreversible outcome. Otherwise state a reasonable reversible assumption and continue.",
+    "Completion protocol: save deliverables in the selected workspace and run the route's type-specific verification. Do not claim completion without concrete evidence such as successful tests/builds, document or slide rendering, spreadsheet checks, citation traceability, or package smoke tests as applicable.",
     "First inspect the available workspace and attachments. Preserve user-authored work, compose only the skills needed for the task, continue until the acceptance criteria are verified, and report concrete evidence in the handoff.",
     "</openwork_task_contract>",
   ].join("\n")

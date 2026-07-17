@@ -4,6 +4,8 @@ OpenWork 0.2 moves the desktop product from an OpenCode-shaped control surface t
 
 The implemented harness now persists a per-task Context Graph with source provenance and explicit assumptions, composes inspect/create/verify Skill capability routes by work type, and enforces independent workspace, command, network, external, and destructive permission scopes. Destructive actions always require approval, including when the task uses Agent autonomy.
 
+The task runtime also discovers deliverables from session diffs, patches, and tool attachments; persists them as reviewable artifacts; reads the actual files; and applies type-specific checks for document structure, editable and rendered presentations, spreadsheet structure and formulas, research citations, software tests/builds, and package smoke evidence. A task reaches Verified only when every discovered artifact has passing evidence.
+
 ## Product principles
 
 - The home screen starts work. Configuration belongs in Settings.

@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { addWorkCheckpoint, createWorkTask, setWorkTaskContext, transitionWorkTask, workTaskKey } from "./task-runtime"
+import {
+  addWorkCheckpoint,
+  createWorkTask,
+  setWorkTaskArtifacts,
+  setWorkTaskContext,
+  transitionWorkTask,
+  workTaskKey,
+} from "./task-runtime"
 import { createContextGraph } from "./context-graph"
 import { createWorkSpec } from "./work-spec"
 
@@ -100,5 +107,35 @@ describe("OpenWork task runtime", () => {
       "/workspace/brief.md",
       "/workspace/data.csv",
     ])
+  })
+
+  test("stores artifact verification evidence on the durable task", () => {
+    const created = createWorkTask({
+      scope: "local",
+      sessionID: "session-1",
+      directory: "/workspace",
+      spec,
+      at: 10,
+      activityID: "activity-1",
+    })
+    const next = setWorkTaskArtifacts(
+      created,
+      [
+        {
+          id: "artifact:document:report.md",
+          name: "report.md",
+          kind: "document",
+          path: "report.md",
+          changedFiles: ["report.md"],
+          status: "passed",
+          checks: [{ id: "exists", status: "passed" }],
+          verifiedAt: 20,
+        },
+      ],
+      20,
+    )
+
+    expect(next.verificationAt).toBe(20)
+    expect(next.artifacts?.[0]?.status).toBe("passed")
   })
 })

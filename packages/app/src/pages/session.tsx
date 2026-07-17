@@ -87,6 +87,12 @@ import { SessionReviewV2SidebarToggle } from "@opencode-ai/session-ui/v2/session
 import { ReviewPanelV2 } from "@/pages/session/v2/review-panel-v2"
 import { OpenWorkTaskBar } from "@/components/openwork-task-bar"
 import { useOpenWorkTasks } from "@/context/openwork-tasks"
+import {
+  collectWorkArtifactEvidence,
+  discoverWorkArtifactCandidates,
+  verifyWorkArtifacts,
+  type WorkArtifactContent,
+} from "@/openwork/artifact-verifier"
 import { createReviewPanelV2State } from "@/pages/session/v2/review-panel-v2-state"
 import { reviewDiffDirectory, reviewDiffNeedsLoad, reviewRootDirectory } from "@/pages/session/v2/review-diff-kinds"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
@@ -1123,6 +1129,72 @@ export default function Page() {
     if (current?.type === "idle" && (task.status === "running" || task.status === "waiting")) {
       workTasks.transition(scope, sessionID, "ready")
     }
+  })
+
+  let artifactVerificationRun = 0
+  let artifactVerificationSignature = ""
+  const [artifactVerificationNonce, setArtifactVerificationNonce] = createSignal(0)
+  createEffect(() => {
+    const run = ++artifactVerificationRun
+    const sessionID = params.id
+    if (!sessionID || !messagesReady()) return
+    const scope = serverSDK().scope
+    const task = workTasks.get(scope, sessionID)
+    if (!task || composer.blocked()) return
+    const status = sync().data.session_status[sessionID]
+    if (status && status.type !== "idle") return
+
+    const parts = messages().flatMap((message) => sync().data.part[message.id] ?? [])
+    const currentDiffs = diffs()
+    const candidates = discoverWorkArtifactCandidates({
+      workKind: task.spec.kind,
+      workspace: task.directory,
+      diffs: currentDiffs,
+      parts,
+    })
+    const evidence = collectWorkArtifactEvidence(parts)
+    const signature = `${sessionID}:${
+      checksum(
+        JSON.stringify({
+          files: currentDiffs.map((item) => [item.file, item.status, item.additions, item.deletions]),
+          candidates: candidates.map((item) => [item.id, item.changedFiles]),
+          evidence,
+          nonce: artifactVerificationNonce(),
+        }),
+      ) ?? "empty"
+    }`
+    if (signature === artifactVerificationSignature) return
+    artifactVerificationSignature = signature
+
+    if (candidates.length === 0) {
+      if (task.artifacts?.length) workTasks.setArtifacts(scope, sessionID, [])
+      return
+    }
+
+    void Promise.all(
+      candidates.flatMap((candidate) => {
+        if (!candidate.path) return []
+        return [
+          sdk()
+            .client.file.read({ path: candidate.path })
+            .then((response) => [candidate.path!, response.data] as const)
+            .catch(() => [candidate.path!, undefined] as const),
+        ]
+      }),
+    ).then((entries) => {
+      if (run !== artifactVerificationRun || params.id !== sessionID) return
+      const at = Date.now()
+      const contents = Object.fromEntries(entries) as Record<string, WorkArtifactContent | undefined>
+      const artifacts = verifyWorkArtifacts({ candidates, contents, evidence, at })
+      workTasks.setArtifacts(scope, sessionID, artifacts, at)
+      const current = workTasks.get(scope, sessionID)
+      if (!current) return
+      if (artifacts.every((artifact) => artifact.status === "passed")) {
+        workTasks.transition(scope, sessionID, "completed")
+        return
+      }
+      if (current.status === "completed") workTasks.transition(scope, sessionID, "ready")
+    })
   })
 
   const fileTreeTab = () => layout.fileTree.tab()
@@ -2224,6 +2296,8 @@ export default function Page() {
               if (!next) return
               return revert({ sessionID, messageID: next.id })
             }}
+            onOpenArtifact={(path) => void tabs().open(file.tab(path))}
+            onVerifyArtifacts={() => setArtifactVerificationNonce((value) => value + 1)}
           />
         )}
       </Show>

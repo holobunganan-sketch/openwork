@@ -11,10 +11,18 @@ on:
         description: Optional branch, tag, or SHA to validate
         required: false
         type: string
+      release_version:
+        description: Optional OpenWork release version (0.1.0 or 0.1.0-rc.N)
+        required: false
+        type: string
   workflow_call:
     inputs:
       ref:
         description: Optional branch, tag, or SHA to validate
+        required: false
+        type: string
+      release_version:
+        description: Optional OpenWork release version (0.1.0 or 0.1.0-rc.N)
         required: false
         type: string
 
@@ -43,6 +51,10 @@ jobs:
         uses: ./.github/actions/setup-bun
         with:
           install-flags: --frozen-lockfile
+
+      - name: Set release version
+        if: inputs.release_version != '' || github.event.inputs.release_version != ''
+        run: bun packages/desktop/scripts/set-openwork-version.ts "${{ inputs.release_version || github.event.inputs.release_version }}"
 
       - name: Lint
         run: bun lint
@@ -73,6 +85,10 @@ jobs:
         with:
           install-flags: --frozen-lockfile
 
+      - name: Set release version
+        if: inputs.release_version != '' || github.event.inputs.release_version != ''
+        run: bun packages/desktop/scripts/set-openwork-version.ts "${{ inputs.release_version || github.event.inputs.release_version }}"
+
       - name: Build Desktop
         working-directory: packages/desktop
         run: bun run build
@@ -91,7 +107,7 @@ jobs:
   windows-package:
     name: Windows x64 package verification
     runs-on: windows-2025
-    timeout-minutes: 60
+    timeout-minutes: 75
     defaults:
       run:
         shell: bash
@@ -105,6 +121,10 @@ jobs:
         uses: ./.github/actions/setup-bun
         with:
           install-flags: --frozen-lockfile
+
+      - name: Set release version
+        if: inputs.release_version != '' || github.event.inputs.release_version != ''
+        run: bun packages/desktop/scripts/set-openwork-version.ts "${{ inputs.release_version || github.event.inputs.release_version }}"
 
       - name: Build Desktop
         working-directory: packages/desktop
@@ -120,12 +140,70 @@ jobs:
           OPENCODE_CHANNEL: prod
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - name: Verify installer exists
+      - name: Generate CycloneDX SBOM
+        working-directory: packages/desktop
+        run: bun scripts/openwork-sbom.ts
+
+      - name: Verify Windows artifacts
         shell: pwsh
         run: |
           $assets = Get-ChildItem "packages/desktop/dist/*.exe" -ErrorAction SilentlyContinue
-          if (-not $assets) { throw "Windows installer was not produced" }
+          $setup = $assets | Where-Object Name -Like "OpenWork-Setup-*-windows-x64.exe"
+          $portable = $assets | Where-Object Name -Like "OpenWork-Portable-*-windows-x64.exe"
+          if (-not $setup) { throw "Windows NSIS installer was not produced" }
+          if (-not $portable) { throw "Windows portable executable was not produced" }
+          $sbom = Get-ChildItem "packages/desktop/dist/*.cdx.json" -ErrorAction SilentlyContinue
+          if (-not $sbom) { throw "CycloneDX SBOM was not produced" }
           $assets | ForEach-Object { Write-Host "$($_.Name) $($_.Length) bytes" }
+
+      - name: Smoke test portable, install, launch, coexistence, and uninstall
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dist = Resolve-Path "packages/desktop/dist"
+          $portable = Get-ChildItem "$dist/OpenWork-Portable-*-windows-x64.exe" | Select-Object -First 1
+          $setup = Get-ChildItem "$dist/OpenWork-Setup-*-windows-x64.exe" | Select-Object -First 1
+          $installDir = Join-Path $env:RUNNER_TEMP "OpenWorkSmoke"
+          $openCodeRoots = @(
+            (Join-Path $env:APPDATA "ai.opencode.desktop"),
+            (Join-Path $env:APPDATA "opencode"),
+            (Join-Path $env:USERPROFILE ".config/opencode")
+          )
+          $coexistence = $openCodeRoots | ForEach-Object {
+            New-Item -ItemType Directory -Path $_ -Force | Out-Null
+            Join-Path $_ "openwork-smoke-marker.txt"
+          }
+          $coexistence | ForEach-Object { Set-Content -Path $_ -Value "preserve" }
+          $env:OPENCODE_TEST_ONBOARDING = "1"
+          $env:ELECTRON_DISABLE_SECURITY_WARNINGS = "true"
+
+          $portableProcess = Start-Process -FilePath $portable.FullName -PassThru
+          Start-Sleep -Seconds 15
+          if ($portableProcess.HasExited -and -not (Get-Process OpenWork -ErrorAction SilentlyContinue)) {
+            throw "Portable OpenWork did not remain running"
+          }
+          Get-Process OpenWork -ErrorAction SilentlyContinue | Stop-Process -Force
+
+          $installer = Start-Process -FilePath $setup.FullName -ArgumentList "/S", "/D=$installDir" -PassThru -Wait
+          if ($installer.ExitCode -ne 0) { throw "NSIS installer failed with exit code $($installer.ExitCode)" }
+          $installedExe = Join-Path $installDir "OpenWork.exe"
+          if (-not (Test-Path $installedExe)) { throw "Installed OpenWork executable was not found" }
+
+          $application = Start-Process -FilePath $installedExe -PassThru
+          Start-Sleep -Seconds 15
+          if ($application.HasExited -and -not (Get-Process OpenWork -ErrorAction SilentlyContinue)) {
+            throw "Installed OpenWork did not remain running"
+          }
+          Get-Process OpenWork -ErrorAction SilentlyContinue | Stop-Process -Force
+
+          $uninstaller = Get-ChildItem "$installDir/Uninstall*.exe" | Select-Object -First 1
+          $uninstall = Start-Process -FilePath $uninstaller.FullName -ArgumentList "/S" -PassThru -Wait
+          if ($uninstall.ExitCode -ne 0) { throw "NSIS uninstaller failed with exit code $($uninstall.ExitCode)" }
+          Start-Sleep -Seconds 3
+          if (Test-Path $installedExe) { throw "OpenWork executable remained after uninstall" }
+          $coexistence | ForEach-Object {
+            if ((Get-Content -Path $_ -Raw).Trim() -ne "preserve") { throw "OpenCode coexistence marker changed: $_" }
+          }
 
       - name: Upload Windows package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -135,5 +213,6 @@ jobs:
             packages/desktop/dist/*.exe
             packages/desktop/dist/*.blockmap
             packages/desktop/dist/latest*.yml
+            packages/desktop/dist/*.cdx.json
           if-no-files-found: error
           retention-days: 7

@@ -122,6 +122,28 @@ const api: ElectronAPI = {
   setBackgroundColor: (color: string) => ipcRenderer.invoke("set-background-color", color),
   exportDebugLogs: () => ipcRenderer.invoke("export-debug-logs"),
   recordFatalRendererError: (error) => ipcRenderer.invoke("record-fatal-renderer-error", error),
+  openwork: {
+    skills: {
+      list: () => ipcRenderer.invoke("openwork-skills-list"),
+      previewZip: (data) => ipcRenderer.invoke("openwork-skills-preview-zip", data),
+      installZip: (data) => ipcRenderer.invoke("openwork-skills-install-zip", data),
+      setEnabled: (id, enabled) => ipcRenderer.invoke("openwork-skills-set-enabled", id, enabled),
+      uninstall: (id) => ipcRenderer.invoke("openwork-skills-uninstall", id),
+      rollback: (id) => ipcRenderer.invoke("openwork-skills-rollback", id),
+      exportZip: (id) => ipcRenderer.invoke("openwork-skills-export-zip", id),
+    },
+    mcp: {
+      list: () => ipcRenderer.invoke("openwork-mcp-list"),
+      previewImport: (input) => ipcRenderer.invoke("openwork-mcp-preview-import", input),
+      applyImport: (input) => ipcRenderer.invoke("openwork-mcp-apply-import", input),
+      setEnabled: (name, enabled) => ipcRenderer.invoke("openwork-mcp-set-enabled", name, enabled),
+      remove: (name) => ipcRenderer.invoke("openwork-mcp-remove", name),
+      restoreLatest: () => ipcRenderer.invoke("openwork-mcp-restore-latest"),
+    },
+    usage: {
+      get: () => ipcRenderer.invoke("openwork-usage-get"),
+    },
+  },
 }
 
 contextBridge.exposeInMainWorld("api", api)

@@ -170,6 +170,7 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
     os,
     version: pkg.version,
     windowID: windowState.id,
+    openwork: window.api.openwork,
 
     async openDirectoryPickerDialog(opts) {
       return window.api.openDirectoryPicker({

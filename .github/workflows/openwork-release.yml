@@ -1,0 +1,124 @@
+name: OpenWork Release
+
+on:
+  push:
+    tags:
+      - openwork-v0.1.0-rc.*
+      - openwork-v0.1.0
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing OpenWork release tag
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openwork-release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  validate:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+    steps:
+      - name: Resolve release metadata
+        id: release
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          REF_TAG: ${{ github.ref_name }}
+        run: |
+          tag="${INPUT_TAG:-$REF_TAG}"
+          if [[ ! "$tag" =~ ^openwork-v0\.1\.0(-rc\.[1-9][0-9]*)?$ ]]; then
+            echo "Invalid OpenWork release tag: $tag" >&2
+            exit 1
+          fi
+          version="${tag#openwork-v}"
+          prerelease=false
+          if [[ "$version" == *-rc.* ]]; then prerelease=true; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release tag
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Require a commit merged into openwork-main
+        run: |
+          git fetch --no-tags origin openwork-main
+          git merge-base --is-ancestor HEAD origin/openwork-main || {
+            echo "Release tags must point to a commit merged into openwork-main" >&2
+            exit 1
+          }
+
+      - name: Require a published release candidate before 0.1.0
+        if: steps.release.outputs.prerelease == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          count=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq '[.[] | select(.tag_name | test("^openwork-v0\\.1\\.0-rc\\.[1-9][0-9]*$")) | select(.draft == false)] | length')
+          if [[ "$count" -lt 1 ]]; then
+            echo "OpenWork 0.1.0 requires at least one published RC release" >&2
+            exit 1
+          fi
+
+  ci:
+    name: Release gates
+    needs: validate
+    uses: ./.github/workflows/openwork-ci.yml
+    with:
+      ref: ${{ needs.validate.outputs.tag }}
+      release_version: ${{ needs.validate.outputs.version }}
+
+  publish:
+    name: Publish GitHub release
+    needs: [validate, ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+
+      - name: Download validated Windows artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: openwork-windows-x64
+          path: release
+
+      - name: Create checksums and release notes
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+          PRERELEASE: ${{ needs.validate.outputs.prerelease }}
+        run: |
+          find release -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > release/SHA256SUMS.txt
+          if [[ "$PRERELEASE" == "true" ]]; then
+            printf '# OpenWork 0.1.0 release candidate\n\nThis is a prerelease for final Windows validation.\n\n' > release-notes.md
+          else
+            printf '# OpenWork 0.1.0\n\n' > release-notes.md
+          fi
+          cat docs/releases/OPENWORK_0.1.0.md >> release-notes.md
+
+      - name: Publish immutable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.validate.outputs.tag }}
+          PRERELEASE: ${{ needs.validate.outputs.prerelease }}
+        run: |
+          args=("$TAG" release/* --verify-tag --title "OpenWork ${TAG#openwork-v}" --notes-file release-notes.md)
+          if [[ "$PRERELEASE" == "true" ]]; then args+=(--prerelease); else args+=(--latest); fi
+          gh release create "${args[@]}"

@@ -6,7 +6,7 @@ import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
 import { getCACertificates, setDefaultCACertificates } from "node:tls"
 import type { Event } from "electron"
-import { app } from "electron"
+import { app, safeStorage } from "electron"
 
 import { Deferred, Effect, Fiber } from "effect"
 import contextMenu from "electron-context-menu"
@@ -49,6 +49,9 @@ import { spawnWslSidecar } from "./wsl/sidecar"
 import { cleanupStoreFiles } from "./store-cleanup"
 import { resolveOpenCodeSourcePaths } from "./config-compatibility"
 import { configureConfigCompatibility } from "./config-compatibility-dialog"
+import { createOpenWorkSkillsManager } from "./openwork-skills"
+import { createOpenWorkMcpManager } from "./openwork-mcp"
+import { createOpenWorkUsageService } from "./openwork-usage"
 
 const APP_NAMES: Record<string, string> = {
   dev: "OpenWork Dev",
@@ -260,7 +263,7 @@ const main = Effect.gen(function* () {
     copyright: "OpenWork contributors. Based on OpenCode (MIT).",
     website: "https://github.com/holobunganan-sketch/openwork",
   })
-  yield* Effect.promise(() =>
+  const compatibilityMode = yield* Effect.promise(() =>
     configureConfigCompatibility({
       source: openCodeSourcePaths,
       userDataPath: app.getPath("userData"),
@@ -284,6 +287,37 @@ const main = Effect.gen(function* () {
   registerRendererProtocol()
   setDockIcon()
   const updater = setupAutoUpdater(stopSidecars)
+  const openWorkConfigDir = process.env.OPENCODE_CONFIG_DIR ?? join(process.env.XDG_CONFIG_HOME!, "opencode")
+  const openworkSkills = createOpenWorkSkillsManager({
+    configDir: openWorkConfigDir,
+    homeDir: homedir(),
+    readOnlyRoots: compatibilityMode === "read" ? [openCodeSourcePaths.app.config] : [],
+  })
+  const openworkMcp = createOpenWorkMcpManager({
+    configDir: openWorkConfigDir,
+    userDataPath: app.getPath("userData"),
+    isSidecarRunning: () => server !== null,
+    codec: {
+      available: () => safeStorage.isEncryptionAvailable(),
+      encrypt: (value) => safeStorage.encryptString(value),
+      decrypt: (value) => safeStorage.decryptString(Buffer.from(value)),
+    },
+  })
+  const openworkUsage = createOpenWorkUsageService({
+    getServer: () => Effect.runPromise(Deferred.await(serverReady)),
+  })
+  yield* Effect.promise(() => openworkMcp.hydrateSecrets()).pipe(
+    Effect.tap((count) =>
+      Effect.sync(() => {
+        if (count > 0) logger.log("hydrated encrypted MCP secrets", { count })
+      }),
+    ),
+    Effect.catch((error) =>
+      Effect.sync(() => {
+        logger.warn("failed to hydrate encrypted MCP secrets", error)
+      }),
+    ),
+  )
   registerIpcHandlers({
     killSidecar: () => killSidecar(),
     relaunch,
@@ -312,6 +346,11 @@ const main = Effect.gen(function* () {
     setBackgroundColor: (color) => setBackgroundColor(color),
     exportDebugLogs: () => exportDebugLogs(),
     recordFatalRendererError: (error) => writeLog("renderer", "fatal renderer error", { ...error }, "error"),
+    openwork: {
+      skills: openworkSkills,
+      mcp: openworkMcp,
+      usage: openworkUsage,
+    },
   })
   registerWslIpcHandlers(wslServers)
   void updater.start()

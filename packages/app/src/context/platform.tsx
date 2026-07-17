@@ -19,6 +19,93 @@ type SaveFilePickerOptions = { title?: string; defaultPath?: string }
 type PlatformName = "web" | "desktop"
 type DesktopOS = "macos" | "windows" | "linux"
 
+export type OpenWorkSkill = {
+  id: string
+  name: string
+  description: string
+  installed: boolean
+  enabled: boolean
+  managed: boolean
+  source: "openwork" | "opencode" | "agents" | "claude"
+  updatedAt: number
+  hasBackup: boolean
+}
+
+export type OpenWorkSkillInstallResult = {
+  skill: OpenWorkSkill
+  replaced: boolean
+  backupCreated: boolean
+}
+
+export type OpenWorkSkillZipPreview = {
+  id: string
+  name: string
+  description: string
+  fileCount: number
+  uncompressedBytes: number
+  replacesExisting: boolean
+}
+
+export type OpenWorkMcpServer = {
+  name: string
+  type: "local" | "remote"
+  enabled: boolean
+  summary: string
+  secretFields: string[]
+}
+
+export type OpenWorkMcpImportPreview = {
+  servers: OpenWorkMcpServer[]
+  format: "opencode" | "claude" | "server-map"
+  warnings: string[]
+}
+
+export type OpenWorkMcpMutationResult = {
+  servers: OpenWorkMcpServer[]
+  backupCreated: boolean
+  restartRequired: boolean
+}
+
+export type OpenWorkUsagePeriod = {
+  id: "five-hour" | "weekly" | "monthly"
+  used: number
+  limit: number
+  startsAt: number
+  resetsAt?: number
+}
+
+export type OpenWorkUsage = {
+  source: "official" | "local-estimate" | "unavailable"
+  asOf: number
+  periods: OpenWorkUsagePeriod[]
+  sessionCount: number
+  notice: string
+  documentationUrl: string
+}
+
+export type OpenWorkAPI = {
+  skills: {
+    list(): Promise<OpenWorkSkill[]>
+    previewZip(data: ArrayBuffer): Promise<OpenWorkSkillZipPreview>
+    installZip(data: ArrayBuffer): Promise<OpenWorkSkillInstallResult>
+    setEnabled(id: string, enabled: boolean): Promise<OpenWorkSkill[]>
+    uninstall(id: string): Promise<OpenWorkSkill[]>
+    rollback(id: string): Promise<OpenWorkSkill[]>
+    exportZip(id: string): Promise<string | null>
+  }
+  mcp: {
+    list(): Promise<OpenWorkMcpServer[]>
+    previewImport(input: string): Promise<OpenWorkMcpImportPreview>
+    applyImport(input: string): Promise<OpenWorkMcpMutationResult>
+    setEnabled(name: string, enabled: boolean): Promise<OpenWorkMcpMutationResult>
+    remove(name: string): Promise<OpenWorkMcpMutationResult>
+    restoreLatest(): Promise<OpenWorkMcpMutationResult>
+  }
+  usage: {
+    get(): Promise<OpenWorkUsage>
+  }
+}
+
 export type FatalRendererErrorLog = {
   error: string
   url: string
@@ -117,6 +204,9 @@ type PlatformBase = {
 
   /** Record a fatal renderer error in platform logs (desktop only) */
   recordFatalRendererError?(error: FatalRendererErrorLog): Promise<void>
+
+  /** OpenWork desktop-only management surface. */
+  openwork?: OpenWorkAPI
 }
 
 export type Platform = PlatformBase &

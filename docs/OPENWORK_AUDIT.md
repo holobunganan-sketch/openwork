@@ -31,7 +31,7 @@ The Desktop application uses Electron `42.3.3`, Electron Vite, SolidJS, and Elec
 - Window creation and renderer protocol: `packages/desktop/src/main/windows.ts`
 - Packaging configuration: `packages/desktop/electron-builder.config.ts`
 
-The current security boundary already uses a preload API: renderer code calls `window.api`; Main owns filesystem, shell, dialogs, update operations, and process management. OpenWork-specific privileged services must be registered in Main and exposed through narrow, typed IPC methods. Renderer code must not receive provider tokens or unrestricted filesystem/process access.
+The current security boundary uses a preload API: renderer code calls `window.api`; Main owns filesystem, shell, dialogs, update operations, and process management. OpenWork-specific privileged services are registered in Main and exposed through narrow, typed IPC methods. Renderer code does not receive provider tokens or unrestricted filesystem/process access. The 0.1.0 control center uses this boundary for Skills, MCP configuration, and Go usage summaries.
 
 ## CLI sidecar and Desktop relationship
 
@@ -66,17 +66,17 @@ Provider availability and connection state are synchronized into the shared app.
 - Global and project `.agents/skills/**/SKILL.md`
 - Extra paths and remote URLs declared by the `skills` config section
 
-Skills are parsed through the existing Markdown/frontmatter parser, duplicate names are reported, and agent permission rules determine availability. The OpenWork manager will add metadata, validation, non-destructive enable/disable state, backup, ZIP preview/install, export, and recovery without changing the model-facing Skill protocol.
+Skills are parsed through the existing Markdown/frontmatter parser, duplicate names are reported, and agent permission rules determine availability. The OpenWork manager adds metadata, validation, non-destructive enable/disable state, backup, ZIP install, export, and recovery without changing the model-facing Skill protocol. ZIP input is bounded, normalized, checked for traversal, absolute paths, duplicate case-insensitive paths, symbolic links, entry count, and expanded size, then extracted into staging and atomically moved into the managed Skills directory.
 
 ## MCP configuration and lifecycle
 
 The MCP schema is defined in `packages/core/src/v1/config/mcp.ts` and referenced by the global `mcp` record. Local definitions use an argument array (`command`), optional working directory/environment, enabled state, and timeout. Remote definitions use URL, headers, OAuth configuration, enabled state, and timeout.
 
-`packages/opencode/src/mcp/index.ts` owns connection lifecycle, OAuth, status, tool/resource discovery, add, and remove operations. Existing server routes and shared-app synchronization expose engine status. OpenWork will build import/export and configuration management around this schema. JSONC writes must use structural edits, merge only the `mcp` field, preserve unrelated configuration/comments, serialize writes, and create timestamped backups.
+`packages/opencode/src/mcp/index.ts` owns connection lifecycle, OAuth, status, tool/resource discovery, add, and remove operations. Existing server routes and shared-app synchronization expose engine status. OpenWork builds import and configuration management around this schema. JSONC writes use structural edits, merge only the `mcp` field, preserve unrelated configuration/comments, serialize writes, and create timestamped backups. Claude `mcpServers` input is converted to the native shape. Detected environment, header, OAuth, and command-line secrets are replaced by `{env:...}` references and encrypted with Electron `safeStorage`; only masked metadata crosses into Renderer.
 
 ## Updates, telemetry, and crash reporting
 
-Electron Updater is configured in `packages/desktop/src/main/updater.ts`; the publish repository comes from Electron Builder channel configuration. The current beta and production channels point to `anomalyco/opencode-beta` and `anomalyco/opencode`. These sources must be replaced with `holobunganan-sketch/openwork`, filtered to the `openwork-v*` release track.
+Electron Updater is configured in `packages/desktop/src/main/updater.ts`; the publish repository comes from Electron Builder channel configuration. OpenWork beta and production channels point to `holobunganan-sketch/openwork`. Stable clients reject prereleases, and the independent release workflow publishes only the `openwork-v*` release track.
 
 Desktop crash reporting currently starts Electron Crashpad with `uploadToServer: false`. Vite disables build telemetry, but upstream publish/deploy workflows inject Sentry DSN, release, organization, project, and auth-token values. OpenWork workflows will not inject upstream Sentry values, and non-essential telemetry remains disabled by default. Debug log export names and manifests must be rebranded and redact secrets.
 
@@ -94,7 +94,7 @@ The upstream `.github/workflows/publish.yml` cannot be reused by this fork becau
 - injects OpenCode Sentry configuration
 - publishes ordinary upstream `v*` tags and OpenCode-branded artifacts
 
-OpenWork therefore needs independent GitHub-hosted CI and release workflows. Signing is opt-in; an absent OpenWork certificate must produce an unsigned but tested release with a SmartScreen notice rather than fail the build.
+OpenWork uses independent GitHub-hosted CI and release workflows. CI builds NSIS and portable Windows 11 x64 artifacts, launches both forms, verifies OpenCode coexistence markers, silently uninstalls the installed form, and emits a CycloneDX SBOM. Signing is opt-in; an absent OpenWork certificate produces an unsigned but tested release with a SmartScreen notice rather than failing the build.
 
 ## Compatibility boundaries to preserve
 

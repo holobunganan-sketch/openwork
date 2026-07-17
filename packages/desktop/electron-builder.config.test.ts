@@ -46,6 +46,7 @@ describe("OpenWork desktop identity", () => {
 
   test("builds an assisted per-user Windows installer", async () => {
     const config = await load("prod", "installer")
+    expect(config.win?.target).toEqual(["nsis", "portable"])
     expect(config.nsis).toMatchObject({
       oneClick: false,
       perMachine: false,
@@ -55,6 +56,9 @@ describe("OpenWork desktop identity", () => {
       createDesktopShortcut: true,
       shortcutName: "OpenWork",
       artifactName: "OpenWork-Setup-${version}-windows-${arch}.${ext}",
+    })
+    expect(config.portable).toEqual({
+      artifactName: "OpenWork-Portable-${version}-windows-${arch}.${ext}",
     })
   })
 })

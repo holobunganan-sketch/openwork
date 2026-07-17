@@ -46,7 +46,7 @@ test("reports a divergent native offset once and ignores equal offsets and unrel
   route.remove()
   document.body.append(route)
   await new Promise((resolve) => setTimeout(resolve, 0))
-  await frames(3)
+  await waitFor(() => calls.length === 1)
   expect(calls).toEqual([[0, false]])
 
   route.remove()
@@ -196,4 +196,9 @@ async function frames(count: number) {
   for (let index = 0; index < count; index++) {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
   }
+}
+
+async function waitFor(predicate: () => boolean, maxFrames = 20) {
+  for (let index = 0; index < maxFrames && !predicate(); index++) await frames(1)
+  expect(prdicate()).toBe(true)
 }

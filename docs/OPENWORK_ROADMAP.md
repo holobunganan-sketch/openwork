@@ -31,3 +31,13 @@ Formal release gates are defined in the release workflow and release documentati
 - [x] Add wish-prompt evaluations, accessibility, visual regression, and migration coverage
 - [x] Publish and validate `openwork-v0.2.0-rc.1`
 - [x] Fix RC defects and publish `openwork-v0.2.0`
+
+## OpenWork 0.2.1
+
+- [x] Accept valid Skill ZIP packages with nested helper directories and a single root manifest
+- [x] Add project-folder, model, and model-variant selection to the task-first home
+- [x] Start a task directly from the task-first composer without returning to the legacy session shell
+- [x] Persist the selected workspace and model in the WorkSpec and active task workbench
+- [x] Add browser coverage for one-click task launch and server-backed prompt submission
+- [ ] Publish and validate `openwork-v0.2.1-rc.1`
+- [ ] Fix RC defects and publish `openwork-v0.2.1`

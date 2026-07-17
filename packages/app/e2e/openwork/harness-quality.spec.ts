@@ -117,7 +117,7 @@ test("keeps memory visible, scoped, optional, and deliberately removable", async
   await page.getByRole("button", { name: "Settings" }).last().click()
   await page.getByRole("tab", { name: "Memory" }).click()
 
-  await expect(page.getByRole("heading", { name: "Memory" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Memory", exact: true })).toBeVisible()
   const list = page.getByRole("navigation", { name: "Saved memory" })
   const entry = list.getByRole("button").first()
   await expect(entry).toHaveAttribute("aria-current", "true")

@@ -122,7 +122,7 @@ export async function mockOpenCodeServer(page: Page, config: MockServerConfig) {
 
     const promptAsyncMatch = path.match(/^\/session\/([^/]+)\/prompt_async$/)
     if (promptAsyncMatch && route.request().method() === "POST") {
-      const body = await route.request().postDataJSON().catch(() => undefined)
+      const body = postDataJSON(route)
       config.onPrompt?.({ sessionID: promptAsyncMatch[1]!, body })
       return route.fulfill({
         status: 204,
@@ -134,7 +134,7 @@ export async function mockOpenCodeServer(page: Page, config: MockServerConfig) {
     const messagesMatch = path.match(/^\/session\/([^/]+)\/message$/)
     if (messagesMatch) {
       if (route.request().method() === "POST") {
-        const body = await route.request().postDataJSON().catch(() => undefined)
+        const body = postDataJSON(route)
         config.onPrompt?.({ sessionID: messagesMatch[1], body })
         return json(route, {})
       }
@@ -193,6 +193,14 @@ function json(route: Route, body: unknown, headers?: Record<string, string>, sta
     },
     body: JSON.stringify(body ?? null),
   })
+}
+
+function postDataJSON(route: Route) {
+  try {
+    return route.request().postDataJSON()
+  } catch {
+    return undefined
+  }
 }
 
 function sse(route: Route, events?: unknown[], retry?: number) {

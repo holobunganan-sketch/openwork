@@ -200,5 +200,5 @@ async function frames(count: number) {
 
 async function waitFor(predicate: () => boolean, maxFrames = 20) {
   for (let index = 0; index < maxFrames && !predicate(); index++) await frames(1)
-  expect(prdicate()).toBe(true)
+  expect(predicate()).toBe(true)
 }

@@ -2,6 +2,7 @@ name: pr-standards
 
 on:
   pull_request_target:
+    branches: [dev]
     types: [opened, edited, synchronize]
 
 jobs:

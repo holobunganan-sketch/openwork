@@ -533,7 +533,7 @@ export const dict = {
   "toast.session.listFailed.title": "ไม่สามารถโหลดเซสชันสำหรับ {{project}}",
 
   "toast.update.title": "มีการอัปเดต",
-  "toast.update.description": "เวอร์ชันใหม่ของ OpenCode ({{version}}) พร้อมใช้งานสำหรับติดตั้ง",
+  "toast.update.description": "เวอร์ชันใหม่ของ OpenWork ({{version}}) พร้อมใช้งานสำหรับติดตั้ง",
   "toast.update.action.installRestart": "ติดตั้งและรีสตาร์ท",
   "toast.update.action.notYet": "ยังไม่",
 
@@ -548,7 +548,7 @@ export const dict = {
   "error.page.action.checking": "กำลังตรวจสอบ...",
   "error.page.action.checkUpdates": "ตรวจสอบการอัปเดต",
   "error.page.action.updateTo": "อัปเดตเป็น {{version}}",
-  "error.page.report.prefix": "โปรดรายงานข้อผิดพลาดนี้ให้ทีม OpenCode",
+  "error.page.report.prefix": "โปรดรายงานข้อผิดพลาดนี้ให้ทีม OpenWork",
   "error.page.report.discord": "บน Discord",
   "error.page.version": "เวอร์ชัน: {{version}}",
 
@@ -739,7 +739,7 @@ export const dict = {
   "sidebar.empty.title": "ไม่มีโปรเจกต์ที่เปิดอยู่",
   "sidebar.empty.description": "เปิดโปรเจกต์เพื่อเริ่มต้น",
 
-  "app.name.desktop": "OpenCode Desktop",
+  "app.name.desktop": "OpenWork Desktop",
 
   "settings.section.desktop": "เดสก์ท็อป",
   "settings.section.server": "เซิร์ฟเวอร์",
@@ -758,18 +758,18 @@ export const dict = {
   "settings.general.section.display": "การแสดงผล",
 
   "settings.general.row.language.title": "ภาษา",
-  "settings.general.row.language.description": "เปลี่ยนภาษาที่แสดงสำหรับ OpenCode",
+  "settings.general.row.language.description": "เปลี่ยนภาษาที่แสดงสำหรับ OpenWork",
   "settings.general.row.shell.title": "เชลล์เทอร์มินัล",
   "settings.general.row.shell.description":
     "เลือกเชลล์ที่จะใช้กับเทอร์มินัล เชลล์ที่เข้ากันได้จะใช้สำหรับการเรียกเครื่องมือของเอเจนต์ด้วย",
   "settings.general.row.shell.autoDefault": "อัตโนมัติ (ค่าเริ่มต้น)",
   "settings.general.row.shell.terminalOnly": "เทอร์มินัลเท่านั้น",
   "settings.general.row.appearance.title": "รูปลักษณ์",
-  "settings.general.row.appearance.description": "ปรับแต่งวิธีการที่ OpenCode มีลักษณะบนอุปกรณ์ของคุณ",
+  "settings.general.row.appearance.description": "ปรับแต่งวิธีการที่ OpenWork มีลักษณะบนอุปกรณ์ของคุณ",
   "settings.general.row.colorScheme.title": "โทนสี",
-  "settings.general.row.colorScheme.description": "เลือกว่าจะให้ OpenCode ใช้ธีมตามระบบ สว่าง หรือมืด",
+  "settings.general.row.colorScheme.description": "เลือกว่าจะให้ OpenWork ใช้ธีมตามระบบ สว่าง หรือมืด",
   "settings.general.row.theme.title": "ธีม",
-  "settings.general.row.theme.description": "ปรับแต่งวิธีการที่ OpenCode มีธีม",
+  "settings.general.row.theme.description": "ปรับแต่งวิธีการที่ OpenWork มีธีม",
   "settings.general.row.font.title": "ฟอนต์โค้ด",
   "settings.general.row.font.description": "ปรับแต่งฟอนต์ที่ใช้ในบล็อกโค้ด",
   "settings.general.row.terminalFont.title": "ฟอนต์เทอร์มินัล",
@@ -819,7 +819,7 @@ export const dict = {
   "settings.general.row.releaseNotes.description": "แสดงป๊อปอัพ What's New หลังจากอัปเดต",
 
   "settings.updates.row.startup.title": "ตรวจสอบการอัปเดตเมื่อเริ่มต้น",
-  "settings.updates.row.startup.description": "ตรวจสอบการอัปเดตโดยอัตโนมัติเมื่อ OpenCode เปิดใช้งาน",
+  "settings.updates.row.startup.description": "ตรวจสอบการอัปเดตโดยอัตโนมัติเมื่อ OpenWork เปิดใช้งาน",
   "settings.updates.row.check.title": "ตรวจสอบการอัปเดต",
   "settings.updates.row.check.description": "ตรวจสอบการอัปเดตด้วยตนเองและติดตั้งหากมี",
   "settings.updates.action.checkNow": "ตรวจสอบทันที",
@@ -827,7 +827,7 @@ export const dict = {
   "settings.updates.action.downloading": "กำลังดาวน์โหลด...",
   "settings.updates.action.installing": "กำลังติดตั้ง...",
   "settings.updates.toast.latest.title": "คุณเป็นเวอร์ชันล่าสุดแล้ว",
-  "settings.updates.toast.latest.description": "คุณกำลังใช้งาน OpenCode เวอร์ชันล่าสุด",
+  "settings.updates.toast.latest.description": "คุณกำลังใช้งาน OpenWork เวอร์ชันล่าสุด",
 
   "sound.option.none": "ไม่มี",
   "sound.option.alert01": "เสียงเตือน 01",
@@ -1024,6 +1024,9 @@ export const dict = {
   "session.header.open.finder": "Finder",
   "session.header.open.fileExplorer": "File Explorer",
   "session.header.open.fileManager": "File Manager",
+  "session.header.reveal.finder": "แสดงใน Finder",
+  "session.header.reveal.fileExplorer": "แสดงใน File Explorer",
+  "session.header.reveal.containingFolder": "เปิดโฟลเดอร์ที่มีไฟล์",
   "session.header.open.app.vscode": "VS Code",
   "session.header.open.app.cursor": "Cursor",
   "session.header.open.app.zed": "Zed",

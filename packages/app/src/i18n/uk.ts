@@ -549,7 +549,7 @@ export const dict = {
   "toast.project.reloadFailed.title": "Не вдалося перезавантажити {{project}}",
 
   "toast.update.title": "Доступне оновлення",
-  "toast.update.description": "Нова версія OpenCode ({{version}}) тепер доступна для встановлення.",
+  "toast.update.description": "Нова версія OpenWork ({{version}}) тепер доступна для встановлення.",
   "toast.update.action.installRestart": "Встановити та перезапустити",
   "toast.update.action.notYet": "Не зараз",
 
@@ -565,7 +565,7 @@ export const dict = {
   "error.page.action.checkUpdates": "Перевірити оновлення",
   "error.page.action.updateTo": "Оновити до {{version}}",
   "error.page.circular": "[Циклічне]",
-  "error.page.report.prefix": "Будь ласка, повідомте про цю помилку команді OpenCode",
+  "error.page.report.prefix": "Будь ласка, повідомте про цю помилку команді OpenWork",
   "error.page.report.discord": "на Discord",
   "error.page.version": "Версія: {{version}}",
 
@@ -715,6 +715,9 @@ export const dict = {
   "session.header.open.finder": "Finder",
   "session.header.open.fileExplorer": "Провідник файлів",
   "session.header.open.fileManager": "Файловий менеджер",
+  "session.header.reveal.finder": "Показати у Finder",
+  "session.header.reveal.fileExplorer": "Показати у Провіднику",
+  "session.header.reveal.containingFolder": "Відкрити папку, що містить файл",
   "session.header.open.app.vscode": "VS Code",
   "session.header.open.app.cursor": "Cursor",
   "session.header.open.app.zed": "Zed",
@@ -839,7 +842,7 @@ export const dict = {
   "debugBar.mem.tipUnavailable": "Використана купа JS проти ліміту купи. Тільки Chromium.",
   "debugBar.mem.tip": "Використана купа JS проти ліміту купи. {{used}} з {{limit}}.",
 
-  "app.name.desktop": "OpenCode Desktop",
+  "app.name.desktop": "OpenWork Desktop",
 
   "settings.section.desktop": "Робочий стіл",
   "settings.section.server": "Сервер",
@@ -858,18 +861,18 @@ export const dict = {
   "settings.general.section.display": "Дисплей",
 
   "settings.general.row.language.title": "Мова",
-  "settings.general.row.language.description": "Змінити мову інтерфейсу OpenCode",
+  "settings.general.row.language.description": "Змінити мову інтерфейсу OpenWork",
   "settings.general.row.shell.title": "Командна оболонка термінала",
   "settings.general.row.shell.description":
     "Виберіть оболонку для термінала. Сумісні оболонки також використовуються для викликів інструментів агента.",
   "settings.general.row.shell.autoDefault": "Авто (за замовчуванням)",
   "settings.general.row.shell.terminalOnly": "тільки термінал",
   "settings.general.row.appearance.title": "Зовнішній вигляд",
-  "settings.general.row.appearance.description": "Налаштуйте вигляд OpenCode на вашому пристрої",
+  "settings.general.row.appearance.description": "Налаштуйте вигляд OpenWork на вашому пристрої",
   "settings.general.row.colorScheme.title": "Кольорова схема",
-  "settings.general.row.colorScheme.description": "Виберіть, чи OpenCode використовує системну, світлу або темну тему",
+  "settings.general.row.colorScheme.description": "Виберіть, чи OpenWork використовує системну, світлу або темну тему",
   "settings.general.row.theme.title": "Тема",
-  "settings.general.row.theme.description": "Налаштуйте тему OpenCode.",
+  "settings.general.row.theme.description": "Налаштуйте тему OpenWork.",
   "settings.general.row.font.title": "Шрифт коду",
   "settings.general.row.font.description": "Налаштуйте шрифт, який використовується в блоках коду",
   "settings.general.row.terminalFont.title": "Шрифт термінала",
@@ -923,7 +926,7 @@ export const dict = {
   "settings.general.row.releaseNotes.description": 'Показувати спливаючі вікна "Що нового" після оновлень',
 
   "settings.updates.row.startup.title": "Перевіряти оновлення під час запуску",
-  "settings.updates.row.startup.description": "Автоматично перевіряти наявність оновлень під час запуску OpenCode",
+  "settings.updates.row.startup.description": "Автоматично перевіряти наявність оновлень під час запуску OpenWork",
   "settings.updates.row.check.title": "Перевірити оновлення",
   "settings.updates.row.check.description": "Вручну перевірити наявність оновлень і встановити, якщо доступні",
   "settings.updates.action.checkNow": "Перевірити зараз",
@@ -931,7 +934,7 @@ export const dict = {
   "settings.updates.action.downloading": "Завантаження...",
   "settings.updates.action.installing": "Встановлення...",
   "settings.updates.toast.latest.title": "У вас актуальна версія",
-  "settings.updates.toast.latest.description": "Ви використовуєте останню версію OpenCode.",
+  "settings.updates.toast.latest.description": "Ви використовуєте останню версію OpenWork.",
   "sound.option.none": "Немає",
   "sound.option.alert01": "Alert 01",
   "sound.option.alert02": "Alert 02",

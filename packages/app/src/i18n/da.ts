@@ -532,7 +532,7 @@ export const dict = {
   "toast.session.listFailed.title": "Kunne ikke indlæse sessioner for {{project}}",
 
   "toast.update.title": "Opdatering tilgængelig",
-  "toast.update.description": "En ny version af OpenCode ({{version}}) er nu tilgængelig til installation.",
+  "toast.update.description": "En ny version af OpenWork ({{version}}) er nu tilgængelig til installation.",
   "toast.update.action.installRestart": "Installer og genstart",
   "toast.update.action.notYet": "Ikke endnu",
 
@@ -547,7 +547,7 @@ export const dict = {
   "error.page.action.checking": "Tjekker...",
   "error.page.action.checkUpdates": "Tjek for opdateringer",
   "error.page.action.updateTo": "Opdater til {{version}}",
-  "error.page.report.prefix": "Rapporter venligst denne fejl til OpenCode-teamet",
+  "error.page.report.prefix": "Rapporter venligst denne fejl til OpenWork-teamet",
   "error.page.report.discord": "på Discord",
   "error.page.version": "Version: {{version}}",
 
@@ -742,7 +742,7 @@ export const dict = {
   "sidebar.empty.title": "Ingen åbne projekter",
   "sidebar.empty.description": "Åbn et projekt for at komme i gang",
 
-  "app.name.desktop": "OpenCode Desktop",
+  "app.name.desktop": "OpenWork Desktop",
   "settings.section.desktop": "Desktop",
   "settings.section.server": "Server",
   "settings.tab.general": "Generelt",
@@ -760,18 +760,18 @@ export const dict = {
   "settings.general.section.display": "Skærm",
 
   "settings.general.row.language.title": "Sprog",
-  "settings.general.row.language.description": "Ændr visningssproget for OpenCode",
+  "settings.general.row.language.description": "Ændr visningssproget for OpenWork",
   "settings.general.row.shell.title": "Terminalshell",
   "settings.general.row.shell.description":
     "Vælg den shell, der bruges i din terminal. Kompatible shells bruges også til agentens værktøjskald.",
   "settings.general.row.shell.autoDefault": "Automatisk (standard)",
   "settings.general.row.shell.terminalOnly": "kun terminal",
   "settings.general.row.appearance.title": "Udseende",
-  "settings.general.row.appearance.description": "Tilpas hvordan OpenCode ser ud på din enhed",
+  "settings.general.row.appearance.description": "Tilpas hvordan OpenWork ser ud på din enhed",
   "settings.general.row.colorScheme.title": "Farveskema",
-  "settings.general.row.colorScheme.description": "Vælg om OpenCode følger systemets, lyst eller mørkt tema",
+  "settings.general.row.colorScheme.description": "Vælg om OpenWork følger systemets, lyst eller mørkt tema",
   "settings.general.row.theme.title": "Tema",
-  "settings.general.row.theme.description": "Tilpas hvordan OpenCode er temabestemt.",
+  "settings.general.row.theme.description": "Tilpas hvordan OpenWork er temabestemt.",
   "settings.general.row.font.title": "Kode-skrifttype",
   "settings.general.row.font.description": "Tilpas skrifttypen, der bruges i kodeblokke",
   "settings.general.row.terminalFont.title": "Terminalskrifttype",
@@ -823,7 +823,7 @@ export const dict = {
   "settings.general.row.releaseNotes.description": 'Vis "Hvad er nyt"-popups efter opdateringer',
 
   "settings.updates.row.startup.title": "Tjek for opdateringer ved opstart",
-  "settings.updates.row.startup.description": "Tjek automatisk for opdateringer, når OpenCode starter",
+  "settings.updates.row.startup.description": "Tjek automatisk for opdateringer, når OpenWork starter",
   "settings.updates.row.check.title": "Tjek for opdateringer",
   "settings.updates.row.check.description": "Tjek manuelt for opdateringer og installer, hvis tilgængelig",
   "settings.updates.action.checkNow": "Tjek nu",
@@ -831,7 +831,7 @@ export const dict = {
   "settings.updates.action.downloading": "Downloader...",
   "settings.updates.action.installing": "Installerer...",
   "settings.updates.toast.latest.title": "Du er opdateret",
-  "settings.updates.toast.latest.description": "Du kører den nyeste version af OpenCode.",
+  "settings.updates.toast.latest.description": "Du kører den nyeste version af OpenWork.",
 
   "sound.option.none": "Ingen",
   "sound.option.alert01": "Alarm 01",
@@ -1029,6 +1029,9 @@ export const dict = {
   "session.header.open.finder": "Finder",
   "session.header.open.fileExplorer": "Stifinder",
   "session.header.open.fileManager": "Filhåndtering",
+  "session.header.reveal.finder": "Vis i Finder",
+  "session.header.reveal.fileExplorer": "Vis i Stifinder",
+  "session.header.reveal.containingFolder": "Åbn overordnet mappe",
   "session.header.open.app.vscode": "VS Code",
   "session.header.open.app.cursor": "Cursor",
   "session.header.open.app.zed": "Zed",

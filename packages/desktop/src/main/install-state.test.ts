@@ -16,4 +16,8 @@ describe("hasExistingAppState", () => {
     expect(hasExistingAppState([file("window-state-abc.json")])).toBe(true)
     expect(hasExistingAppState([directory("opencode")])).toBe(true)
   })
+
+  test("recognizes OpenWork settings", () => {
+    expect(hasExistingAppState([file("openwork.settings")])).toBe(true)
+  })
 })

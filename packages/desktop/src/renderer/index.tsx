@@ -27,15 +27,15 @@ import { DesktopFirstLaunchOnboarding } from "./onboarding"
 import { resetZoom, setPinchZoomEnabled, webviewZoom, zoomIn, zoomOut } from "./webview-zoom"
 import { availableStartupServer, readyWslConnections } from "./wsl/connections"
 import "./styles.css"
-import { Splash } from "@opencode-ai/ui/logo"
 import { useTheme } from "@opencode-ai/ui/theme/context"
+import openWorkIcon from "../../resources/openwork-icons/openwork.svg?url"
 
 const root = document.getElementById("root")
 if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   throw new Error(t("error.dev.rootNotFound"))
 }
 
-if (import.meta.env.VITE_SENTRY_DSN) {
+if (import.meta.env.VITE_OPENWORK_ENABLE_TELEMETRY === "true" && import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
     dsn: import.meta.env.VITE_SENTRY_DSN,
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
@@ -63,7 +63,7 @@ void initI18n()
 const [updaterState, setUpdaterState] = createSignal<UpdaterState>({ status: "disabled" })
 void window.api.updater.subscribe(setUpdaterState)
 
-const deepLinkEvent = "opencode:deep-link"
+const deepLinkEvent = "openwork:deep-link"
 
 type DesktopWindowState = {
   id?: string
@@ -83,7 +83,7 @@ const listenForDeepLinks = () => {
 }
 
 function windowLastActiveUrlKey(windowID: string) {
-  return `opencode.desktop.window.${windowID}.last-active-url`
+  return `openwork.desktop.window.${windowID}.last-active-url`
 }
 
 function getLastActiveUrl(windowID: string) {
@@ -251,10 +251,7 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
       const focused = await window.api.getWindowFocused().catch(() => document.hasFocus())
       if (focused) return
 
-      const notification = new Notification(title, {
-        body: description ?? "",
-        icon: "https://opencode.ai/favicon-96x96-v3.png",
-      })
+      const notification = new Notification(title, { body: description ?? "" })
       notification.onclick = () => {
         void window.api.showWindow()
         void window.api.setWindowFocus()
@@ -322,7 +319,7 @@ listenForDeepLinks()
 function LoadingSplash() {
   return (
     <div class="h-dvh w-screen flex flex-col items-center justify-center bg-background-base">
-      <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+      <img src={openWorkIcon} alt="OpenWork" class="w-16 h-16 opacity-70 animate-pulse" />
     </div>
   )
 }

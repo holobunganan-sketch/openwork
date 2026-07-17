@@ -72,7 +72,7 @@ export type DesktopMenu = {
 export const DESKTOP_MENU: DesktopMenu[] = [
   {
     id: "app",
-    label: "OpenCode",
+    label: "OpenWork",
     platforms: ["macos"],
     items: [
       { type: "item", role: "about" },
@@ -99,7 +99,7 @@ export const DESKTOP_MENU: DesktopMenu[] = [
         command: "session.new",
         accelerator: { macos: "Shift+Cmd+S" },
       },
-      { type: "item", label: "Open Project...", command: "project.open", accelerator: { macos: "Cmd+O" } },
+      { type: "item", label: "Open Workspace...", command: "project.open", accelerator: { macos: "Cmd+O" } },
       {
         type: "item",
         label: "Settings",
@@ -173,13 +173,13 @@ export const DESKTOP_MENU: DesktopMenu[] = [
       { type: "separator" },
       {
         type: "item",
-        label: "Previous Project",
+        label: "Previous Workspace",
         command: "project.previous",
         accelerator: { macos: "Cmd+Option+Up" },
       },
       {
         type: "item",
-        label: "Next Project",
+        label: "Next Workspace",
         command: "project.next",
         accelerator: { macos: "Cmd+Option+Down" },
       },
@@ -200,19 +200,27 @@ export const DESKTOP_MENU: DesktopMenu[] = [
     id: "help",
     label: "Help",
     items: [
-      { type: "item", label: "OpenCode Documentation", href: "https://opencode.ai/docs" },
-      { type: "item", label: "Support Forum", href: "https://discord.com/invite/opencode" },
+      {
+        type: "item",
+        label: "OpenWork Documentation",
+        href: "https://github.com/holobunganan-sketch/openwork#readme",
+      },
+      {
+        type: "item",
+        label: "OpenCode Engine Documentation",
+        href: "https://opencode.ai/docs",
+      },
       { type: "item", label: "Export Logs...", command: "logs.export" },
       { type: "separator" },
       {
         type: "item",
         label: "Share Feedback",
-        href: "https://github.com/anomalyco/opencode/issues/new?template=feature_request.yml",
+        href: "https://github.com/holobunganan-sketch/openwork/issues/new",
       },
       {
         type: "item",
         label: "Report a Bug",
-        href: "https://github.com/anomalyco/opencode/issues/new?template=bug_report.yml",
+        href: "https://github.com/holobunganan-sketch/openwork/issues/new",
       },
     ],
   },

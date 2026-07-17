@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">OpenWork</title>
+  <desc id="desc">An indigo rounded square containing a white angular W and an amber work-status dot.</desc>
+  <defs>
+    <linearGradient id="surface" x1="72" y1="48" x2="440" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4338CA" />
+      <stop offset="1" stop-color="#1E1B4B" />
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#surface)" />
+  <path
+    d="M116 151h70l44 187 49-139h58l49 139 25-106h65l-55 195h-68l-45-128-45 128h-68L116 151Z"
+    fill="#FFFFFF"
+  />
+  <circle cx="395" cy="123" r="42" fill="#F59E0B" />
+</svg>

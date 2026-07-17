@@ -5,6 +5,7 @@ import { encodeFilePath } from "@/context/file/path"
 import type { AgentPart, FileAttachmentPart, ImageAttachmentPart, Prompt } from "@/context/prompt"
 import { Identifier } from "@/utils/id"
 import { createCommentMetadata, formatCommentNote } from "@/utils/comment-note"
+import { formatWorkSpecContext, type WorkSpec } from "@/openwork/work-spec"
 
 type PromptRequestPart = (TextPartInput | FilePartInput | AgentPartInput) & { id: string }
 
@@ -27,6 +28,7 @@ type BuildRequestPartsInput = {
   messageID: string
   sessionID: string
   sessionDirectory: string
+  workSpec?: WorkSpec
 }
 
 const absolute = (directory: string, path: string) => {
@@ -202,7 +204,19 @@ export function buildRequestParts(input: BuildRequestPartsInput) {
     } satisfies PromptRequestPart
   })
 
-  requestParts.push(...files, ...context, ...agents, ...images)
+  const contract = input.workSpec
+    ? [
+        {
+          id: Identifier.ascending("part"),
+          type: "text" as const,
+          text: formatWorkSpecContext(input.workSpec),
+          synthetic: true,
+          metadata: { openwork_work_spec: input.workSpec.version },
+        } satisfies PromptRequestPart,
+      ]
+    : []
+
+  requestParts.push(...contract, ...files, ...context, ...agents, ...images)
 
   return {
     requestParts,

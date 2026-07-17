@@ -1,4 +1,7 @@
+import { openworkFallback } from "./openwork-fallback"
+
 export const dict = {
+  ...openworkFallback,
   "command.category.suggested": "Предложено",
   "command.category.view": "Просмотр",
   "command.category.project": "Проект",

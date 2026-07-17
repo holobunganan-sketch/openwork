@@ -1,8 +1,10 @@
 import { dict as en } from "./en"
+import { openworkFallback } from "./openwork-fallback"
 
 type Keys = keyof typeof en
 
 export const dict = {
+  ...openworkFallback,
   "command.category.suggested": "建議",
   "command.category.view": "檢視",
   "command.category.project": "專案",
@@ -590,20 +592,33 @@ export const dict = {
   "openwork.home.title": "你想從什麼工作開始？",
   "openwork.home.description": "選擇一個常用任務，或開啟專案進入完整開發流程。",
   "openwork.home.projectRequired": "請先連線伺服器，再開始這些任務。",
+  "openwork.composer.placeholder": "描述你想完成的工作。OpenWork 會檢查工作空間、補全安全的預設要求，並驗證最終結果。",
+  "openwork.composer.start": "開始任務",
+  "openwork.autonomy.label": "執行模式",
+  "openwork.autonomy.plan": "規劃",
+  "openwork.autonomy.plan.description": "檢查材料並制定計畫，不進行修改。",
+  "openwork.autonomy.collaborate": "協作",
+  "openwork.autonomy.collaborate.description": "執行安全的工作空間修改，在關鍵或外部操作前詢問。",
+  "openwork.autonomy.agent": "自動",
+  "openwork.autonomy.agent.description": "自主完成工作空間內的安全操作，並驗證結果。",
   "openwork.manage": "Skills、MCP 與用量",
   "openwork.refresh": "重新整理",
   "openwork.task.document.title": "撰寫文件",
   "openwork.task.document.description": "起草、修改、摘要或排版文件。",
-  "openwork.task.document.prompt": "幫我製作一份專業文件。請先詢問受眾、目的、素材和期望格式。",
+  "openwork.task.document.prompt":
+    "根據工作空間中的素材製作一份專業、可編輯的文件。合理補全安全預設值，只詢問會實質影響結果的選擇，並驗證最終檔案。",
   "openwork.task.research.title": "研究主題",
   "openwork.task.research.description": "查找來源、比較證據並產生附引用的簡報。",
-  "openwork.task.research.prompt": "幫我研究一個主題。請先詢問研究問題、範圍、截止時間和輸出形式。",
+  "openwork.task.research.prompt":
+    "使用可信來源研究這個主題，比較證據並交付一份附引用的精煉簡報。自行確定有用的範圍，並明確重要的不確定性。",
   "openwork.task.data.title": "分析資料",
   "openwork.task.data.description": "檢查並驗證資料集，清楚解釋發現。",
-  "openwork.task.data.prompt": "幫我分析資料。請先讓我提供或指定資料，並確認分析要支援的決策。",
+  "openwork.task.data.prompt":
+    "檢查工作空間中可用的資料，驗證資料品質，分析最能支援決策的模式，並交付可編輯活頁簿和精煉結論。",
   "openwork.task.presentation.title": "製作簡報",
   "openwork.task.presentation.description": "將想法或素材整理成清楚的投影片。",
-  "openwork.task.presentation.prompt": "幫我製作簡報。請先詢問受眾、目標、時長、品牌要求和素材。",
+  "openwork.task.presentation.prompt":
+    "把現有素材整理成邏輯清楚、視覺一致的簡報。合理推斷受眾和敘事結構，交付並驗證可編輯檔案。",
   "openwork.task.code.title": "開發軟體",
   "openwork.task.code.description": "實作、診斷、審查、測試並交付程式碼。",
   "openwork.task.code.prompt": "幫我完成這個專案中的軟體開發任務。請先檢查儲存庫，只詢問會實質影響實作的選擇。",
@@ -626,6 +641,8 @@ export const dict = {
   "openwork.skills.rollback": "回復",
   "openwork.skills.uninstall": "解除安裝",
   "openwork.skills.uninstalled": "Skill 已移除，並保留了可復原備份。",
+  "openwork.skills.enabled": "已啟用",
+  "openwork.skills.disabled": "已停用",
   "openwork.mcp.description":
     "貼上 OpenCode JSON/JSONC、Claude mcpServers JSON 或伺服器映射；偵測到的密鑰會移入加密保險庫。",
   "openwork.mcp.placeholder": "貼上含 mcp 或 mcpServers 的 JSON/JSONC…",
@@ -644,6 +661,17 @@ export const dict = {
   "openwork.usage.period.weekly": "滾動 7 天",
   "openwork.usage.period.monthly": "滾動 30 天",
   "openwork.usage.docs": "開啟 Go 官方文件",
+  "openwork.settings.skills.title": "Skills",
+  "openwork.settings.mcp.title": "MCP 連線",
+  "openwork.settings.mcp.importTitle": "匯入 MCP 設定",
+  "openwork.settings.mcp.importDescription":
+    "貼上 OpenCode JSON/JSONC、Claude mcpServers 或伺服器對應。寫入前先檢查辨識到的連線和密鑰。",
+  "openwork.settings.usage.title": "帳戶用量",
+  "openwork.settings.usage.description": "查看可用的 OpenCode Go 官方用量，以及無法取得官方資料時清楚標示的本機估算。",
+  "openwork.settings.status": "狀態",
+  "openwork.settings.source": "來源",
+  "openwork.settings.type": "類型",
+  "openwork.settings.desktopOnly": "此 OpenWork 設定僅在桌面應用程式中可用。",
   "home.projects": "專案",
   "home.project.add": "新增專案",
   "home.recentlyClosed": "最近關閉",
@@ -793,6 +821,7 @@ export const dict = {
   "app.name.desktop": "OpenWork Desktop",
   "settings.section.desktop": "桌面",
   "settings.section.server": "伺服器",
+  "settings.section.openwork": "OpenWork",
   "settings.tab.general": "一般",
   "settings.tab.shortcuts": "快速鍵",
   "settings.desktop.section.wsl": "WSL",

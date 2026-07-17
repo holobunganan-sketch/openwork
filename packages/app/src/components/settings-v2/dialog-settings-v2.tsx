@@ -11,6 +11,11 @@ import { SettingsModelsV2 } from "./models"
 import "./settings-v2.css"
 import { SettingsServersV2 } from "./servers"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
+import {
+  SettingsOpenWorkMcp,
+  SettingsOpenWorkSkills,
+  SettingsOpenWorkUsage,
+} from "@/components/openwork-control-center"
 
 export const DialogSettings: Component<{
   sessionID?: string
@@ -69,6 +74,24 @@ export const DialogSettings: Component<{
                     </TabsV2.Trigger>
                   </div>
                 </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <TabsV2.SectionTitle>{language.t("settings.section.openwork")}</TabsV2.SectionTitle>
+                  <div class="flex flex-col gap-1.5 w-full">
+                    <TabsV2.Trigger value="skills">
+                      <Icon name="archive" />
+                      {language.t("openwork.tab.skills")}
+                    </TabsV2.Trigger>
+                    <TabsV2.Trigger value="mcp">
+                      <Icon name="server" />
+                      {language.t("openwork.tab.mcp")}
+                    </TabsV2.Trigger>
+                    <TabsV2.Trigger value="usage">
+                      <Icon name="status" />
+                      {language.t("openwork.tab.usage")}
+                    </TabsV2.Trigger>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="settings-v2-nav-footer">
@@ -91,6 +114,15 @@ export const DialogSettings: Component<{
         </TabsV2.Content>
         <TabsV2.Content value="models" class="settings-v2-panel">
           <SettingsModelsV2 />
+        </TabsV2.Content>
+        <TabsV2.Content value="skills" class="settings-v2-panel">
+          <SettingsOpenWorkSkills />
+        </TabsV2.Content>
+        <TabsV2.Content value="mcp" class="settings-v2-panel">
+          <SettingsOpenWorkMcp />
+        </TabsV2.Content>
+        <TabsV2.Content value="usage" class="settings-v2-panel">
+          <SettingsOpenWorkUsage />
         </TabsV2.Content>
       </TabsV2>
     </Dialog>

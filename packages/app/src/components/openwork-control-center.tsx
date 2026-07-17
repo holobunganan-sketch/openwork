@@ -1,488 +1,711 @@
 import type { OpenWorkMcpServer, OpenWorkSkill, OpenWorkSkillZipPreview, OpenWorkUsage } from "@/context/platform"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
+import { createWorkSpec, type WorkAutonomy, type WorkKind, type WorkSpec } from "@/openwork/work-spec"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
-import { Dialog, DialogBody, DialogHeader, DialogTitle } from "@opencode-ai/ui/v2/dialog-v2"
-import { DividerV2 } from "@opencode-ai/ui/v2/divider-v2"
 import { Icon } from "@opencode-ai/ui/v2/icon"
 import { TextareaV2 } from "@opencode-ai/ui/v2/textarea-v2"
-import { createMemo, createSignal, For, onMount, Show } from "solid-js"
+import { createEffect, createMemo, For, onMount, Show, type JSX } from "solid-js"
+import { createStore } from "solid-js/store"
 
-type Tab = "skills" | "mcp" | "usage"
-
-export function OpenWorkLaunchpad(props: {
-  disabled: boolean
-  onTask: (prompt: string) => void
-  onManage: () => void
-}) {
+export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec: WorkSpec) => void }) {
   const language = useLanguage()
-  const platform = usePlatform()
+  const [state, setState] = createStore({
+    prompt: "",
+    kind: undefined as WorkKind | undefined,
+    autonomy: "collaborate" as WorkAutonomy,
+  })
   const tasks = createMemo(() => [
     {
-      id: "document",
-      icon: "edit",
+      kind: "document" as const,
+      icon: "edit" as const,
       title: language.t("openwork.task.document.title"),
-      description: language.t("openwork.task.document.description"),
       prompt: language.t("openwork.task.document.prompt"),
     },
     {
-      id: "research",
-      icon: "magnifying-glass",
+      kind: "research" as const,
+      icon: "magnifying-glass" as const,
       title: language.t("openwork.task.research.title"),
-      description: language.t("openwork.task.research.description"),
       prompt: language.t("openwork.task.research.prompt"),
     },
     {
-      id: "data",
-      icon: "status",
+      kind: "data" as const,
+      icon: "status" as const,
       title: language.t("openwork.task.data.title"),
-      description: language.t("openwork.task.data.description"),
       prompt: language.t("openwork.task.data.prompt"),
     },
     {
-      id: "presentation",
-      icon: "grid-plus",
+      kind: "presentation" as const,
+      icon: "grid-plus" as const,
       title: language.t("openwork.task.presentation.title"),
-      description: language.t("openwork.task.presentation.description"),
       prompt: language.t("openwork.task.presentation.prompt"),
     },
     {
-      id: "code",
-      icon: "branch",
+      kind: "software" as const,
+      icon: "branch" as const,
       title: language.t("openwork.task.code.title"),
-      description: language.t("openwork.task.code.description"),
       prompt: language.t("openwork.task.code.prompt"),
     },
   ])
+  const modes = createMemo(() => [
+    {
+      id: "plan" as const,
+      label: language.t("openwork.autonomy.plan"),
+      description: language.t("openwork.autonomy.plan.description"),
+    },
+    {
+      id: "collaborate" as const,
+      label: language.t("openwork.autonomy.collaborate"),
+      description: language.t("openwork.autonomy.collaborate.description"),
+    },
+    {
+      id: "agent" as const,
+      label: language.t("openwork.autonomy.agent"),
+      description: language.t("openwork.autonomy.agent.description"),
+    },
+  ])
+  const workSpec = createMemo(() =>
+    createWorkSpec({ prompt: state.prompt, kind: state.kind, autonomy: state.autonomy }),
+  )
+
+  function start() {
+    if (props.disabled || !state.prompt.trim()) return
+    props.onTask(workSpec())
+  }
 
   return (
-    <section class="mb-7 flex min-w-0 flex-col gap-3" aria-label={language.t("openwork.home.title")}>
-      <div class="flex min-w-0 items-end justify-between gap-4">
-        <div class="min-w-0">
-          <h1 class="m-0 text-[22px] leading-7 tracking-[-0.35px] text-v2-text-text-base [font-weight:600]">
+    <section
+      class="mb-8 flex min-w-0 flex-col items-center pt-8 lg:pt-12"
+      aria-label={language.t("openwork.home.title")}
+    >
+      <div class="w-full max-w-[720px]">
+        <div class="mb-6 text-center">
+          <h1 class="m-0 text-[28px] leading-9 tracking-[-0.6px] text-v2-text-text-base [font-weight:620]">
             {language.t("openwork.home.title")}
           </h1>
-          <p class="m-0 mt-1 text-[13px] leading-5 text-v2-text-text-muted">
+          <p class="m-0 mt-2 text-[13px] leading-5 text-v2-text-text-muted">
             {language.t("openwork.home.description")}
           </p>
         </div>
-        <Show when={platform.openwork}>
-          <ButtonV2 variant="outline" icon="settings-gear" class="shrink-0" onClick={props.onManage}>
-            {language.t("openwork.manage")}
-          </ButtonV2>
+
+        <div class="rounded-[14px] border border-v2-border-border-muted bg-v2-background-bg-layer-01 p-2 shadow-[var(--v2-elevation-raised)] focus-within:border-v2-border-border-focus">
+          <TextareaV2
+            class="!w-full [&_[data-slot=textarea-v2-textarea]]:min-h-28 [&_[data-slot=textarea-v2-textarea]]:resize-none [&_[data-slot=textarea-v2-textarea]]:border-0 [&_[data-slot=textarea-v2-textarea]]:bg-transparent [&_[data-slot=textarea-v2-textarea]]:text-[15px] [&_[data-slot=textarea-v2-textarea]]:leading-6 [&_[data-slot=textarea-v2-textarea]]:shadow-none"
+            rows={4}
+            value={state.prompt}
+            placeholder={language.t("openwork.composer.placeholder")}
+            onInput={(event) => {
+              setState("prompt", event.currentTarget.value)
+              setState("kind", undefined)
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || (!event.metaKey && !event.ctrlKey)) return
+              event.preventDefault()
+              start()
+            }}
+          />
+          <div class="flex flex-wrap items-center gap-2 border-t border-v2-border-border-muted px-1 pt-2">
+            <div class="flex min-w-0 flex-1 items-center gap-1" aria-label={language.t("openwork.autonomy.label")}>
+              <For each={modes()}>
+                {(mode) => (
+                  <button
+                    type="button"
+                    title={mode.description}
+                    data-selected={state.autonomy === mode.id ? "" : undefined}
+                    class="h-7 rounded-[6px] border-0 bg-transparent px-2 text-[11px] text-v2-text-text-muted transition-colors hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-text-text-base data-[selected]:bg-v2-background-bg-layer-03 data-[selected]:text-v2-text-text-base focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-v2-border-border-focus"
+                    onClick={() => setState("autonomy", mode.id)}
+                  >
+                    {mode.label}
+                  </button>
+                )}
+              </For>
+            </div>
+            <ButtonV2
+              variant="contrast"
+              icon="arrow-up"
+              disabled={props.disabled || !state.prompt.trim()}
+              onClick={start}
+            >
+              {language.t("openwork.composer.start")}
+            </ButtonV2>
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap justify-center gap-1.5">
+          <For each={tasks()}>
+            {(task) => (
+              <button
+                type="button"
+                disabled={props.disabled}
+                class="inline-flex h-8 items-center gap-1.5 rounded-full border border-v2-border-border-muted bg-v2-background-bg-base px-3 text-[11px] text-v2-text-text-muted transition-colors hover:bg-v2-background-bg-layer-01 hover:text-v2-text-text-base focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-v2-border-border-focus disabled:opacity-50"
+                onClick={() => {
+                  setState("prompt", task.prompt)
+                  setState("kind", task.kind)
+                }}
+              >
+                <Icon name={task.icon} size="small" />
+                {task.title}
+              </button>
+            )}
+          </For>
+        </div>
+        <Show when={props.disabled}>
+          <p class="m-0 mt-3 text-center text-[12px] text-v2-text-text-muted">
+            {language.t("openwork.home.projectRequired")}
+          </p>
         </Show>
       </div>
-      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        <For each={tasks()}>
-          {(task) => (
-            <button
-              type="button"
-              disabled={props.disabled}
-              class="group flex min-h-[92px] min-w-0 cursor-pointer flex-col items-start gap-2 rounded-[8px] border border-v2-border-border-muted bg-v2-background-bg-layer-01 px-3 py-3 text-left transition-colors hover:bg-v2-background-bg-layer-02 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-v2-border-border-focus disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => props.onTask(task.prompt)}
-            >
-              <span class="flex items-center gap-2 text-[13px] text-v2-text-text-base [font-weight:560]">
-                <Icon name={task.icon} class="text-v2-icon-icon-muted group-hover:text-v2-icon-icon-base" />
-                {task.title}
-              </span>
-              <span class="text-[12px] leading-4 text-v2-text-text-muted">{task.description}</span>
-            </button>
-          )}
-        </For>
-      </div>
-      <Show when={props.disabled}>
-        <p class="m-0 text-[12px] text-v2-text-text-muted">{language.t("openwork.home.projectRequired")}</p>
-      </Show>
     </section>
   )
 }
 
-export function DialogOpenWorkControlCenter() {
+export function SettingsOpenWorkSkills() {
   const platform = usePlatform()
   const language = useLanguage()
   const api = platform.openwork
-  const [tab, setTab] = createSignal<Tab>("skills")
-  const [skills, setSkills] = createSignal<OpenWorkSkill[]>([])
-  const [servers, setServers] = createSignal<OpenWorkMcpServer[]>([])
-  const [usage, setUsage] = createSignal<OpenWorkUsage>()
-  const [skillPending, setSkillPending] = createSignal<{ data: ArrayBuffer; preview: OpenWorkSkillZipPreview }>()
-  const [mcpInput, setMcpInput] = createSignal("")
-  const [mcpPreview, setMcpPreview] = createSignal("")
-  const [status, setStatus] = createSignal("")
-  const [error, setError] = createSignal("")
-  const [busy, setBusy] = createSignal(false)
+  const [state, setState] = createStore<{
+    items: OpenWorkSkill[]
+    selectedID: string
+    pending?: { data: ArrayBuffer; preview: OpenWorkSkillZipPreview }
+    busy: boolean
+    status: string
+    error: string
+  }>({ items: [], selectedID: "", busy: false, status: "", error: "" })
+  const selected = createMemo(() => state.items.find((skill) => skill.id === state.selectedID) ?? state.items[0])
 
-  async function refresh() {
-    if (!api) return
-    const [skillList, serverList, currentUsage] = await Promise.all([
-      api.skills.list(),
-      api.mcp.list(),
-      api.usage.get(),
-    ])
-    setSkills(skillList)
-    setServers(serverList)
-    setUsage(currentUsage)
-  }
-
-  async function act(operation: () => Promise<void>, success?: string) {
-    setBusy(true)
-    setError("")
-    setStatus("")
+  async function run(operation: () => Promise<void>, success?: string) {
+    setState({ busy: true, status: "", error: "" })
     try {
       await operation()
-      if (success) setStatus(success)
+      if (success) setState("status", success)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      setState("error", errorMessage(cause))
     } finally {
-      setBusy(false)
+      setState("busy", false)
     }
   }
 
-  onMount(() => void act(refresh))
+  async function refresh() {
+    if (!api) return
+    setState("items", await api.skills.list())
+  }
 
-  function chooseSkillZip() {
+  onMount(() => void run(refresh))
+  createEffect(() => {
+    if (state.items.some((skill) => skill.id === state.selectedID)) return
+    setState("selectedID", state.items[0]?.id ?? "")
+  })
+
+  function chooseZip() {
     if (!api || !platform.openAttachmentPickerDialog) return
-    void act(() =>
+    void run(() =>
       platform.openAttachmentPickerDialog!(
         { title: language.t("openwork.skills.choose"), extensions: ["zip"] },
         async (file) => {
           const data = await file.arrayBuffer()
-          setSkillPending({ data, preview: await api.skills.previewZip(data) })
+          setState("pending", { data, preview: await api.skills.previewZip(data) })
         },
       ),
     )
   }
 
-  function confirmSkillInstall() {
-    if (!api) return
-    const pending = skillPending()
-    if (!pending) return
-    void act(async () => {
-      await api.skills.installZip(pending.data)
-      setSkillPending(undefined)
-      setSkills(await api.skills.list())
+  function install() {
+    const pending = state.pending
+    if (!api || !pending) return
+    void run(async () => {
+      const result = await api.skills.installZip(pending.data)
+      setState({ pending: undefined, selectedID: result.skill.id })
+      await refresh()
     }, language.t("openwork.skills.install.success"))
   }
 
-  function mutateSkill(operation: () => Promise<OpenWorkSkill[]>, success: string) {
-    void act(async () => {
-      setSkills(await operation())
-    }, success)
+  function mutate(operation: () => Promise<OpenWorkSkill[]>, success: string) {
+    void run(async () => setState("items", await operation()), success)
   }
 
-  function previewMcp() {
+  if (!api) return <OpenWorkUnavailable />
+  return (
+    <OpenWorkSettingsPage
+      title={language.t("openwork.settings.skills.title")}
+      description={language.t("openwork.skills.description")}
+      action={
+        <ButtonV2 icon="plus" variant="contrast" disabled={state.busy} onClick={chooseZip}>
+          {language.t("openwork.skills.choose")}
+        </ButtonV2>
+      }
+      status={state.status}
+      error={state.error}
+    >
+      <Show when={state.pending}>
+        {(pending) => (
+          <div class="mb-3 flex items-center gap-3 rounded-[8px] border border-v2-border-border-focus bg-v2-background-bg-layer-01 px-3 py-3">
+            <Icon name="archive" class="shrink-0 text-v2-icon-icon-muted" />
+            <div class="min-w-0 flex-1">
+              <div class="text-[13px] text-v2-text-text-base [font-weight:560]">{pending().preview.name}</div>
+              <p class="m-0 mt-1 text-[11px] text-v2-text-text-muted">
+                {pending().preview.fileCount} {language.t("openwork.skills.preview.files")} ·{" "}
+                {Math.ceil(pending().preview.uncompressedBytes / 1024)} KB
+              </p>
+            </div>
+            <ButtonV2 size="small" disabled={state.busy} onClick={() => setState("pending", undefined)}>
+              {language.t("common.cancel")}
+            </ButtonV2>
+            <ButtonV2 size="small" variant="contrast" disabled={state.busy} onClick={install}>
+              {language.t("openwork.skills.install")}
+            </ButtonV2>
+          </div>
+        )}
+      </Show>
+      <div class="flex min-h-0 flex-1 overflow-hidden rounded-[9px] border border-v2-border-border-muted bg-v2-background-bg-base">
+        <div class="w-[230px] shrink-0 overflow-y-auto border-r border-v2-border-border-muted py-1.5">
+          <Show when={state.items.length} fallback={<EmptyState text={language.t("openwork.skills.empty")} />}>
+            <For each={state.items}>
+              {(skill) => (
+                <button
+                  type="button"
+                  data-selected={selected()?.id === skill.id ? "" : undefined}
+                  class="flex w-full items-center gap-2 border-0 bg-transparent px-3 py-2 text-left hover:bg-v2-overlay-simple-overlay-hover data-[selected]:bg-v2-background-bg-layer-02 focus-visible:outline-none"
+                  onClick={() => setState("selectedID", skill.id)}
+                >
+                  <span
+                    class={`size-2 shrink-0 rounded-full ${skill.enabled ? "bg-v2-state-fg-success" : "bg-v2-icon-icon-disabled"}`}
+                  />
+                  <span class="min-w-0 flex-1 truncate text-[12px] text-v2-text-text-base">{skill.name}</span>
+                </button>
+              )}
+            </For>
+          </Show>
+        </div>
+        <div class="min-w-0 flex-1 overflow-y-auto p-5">
+          <Show when={selected()} fallback={<EmptyState text={language.t("openwork.skills.empty")} />}>
+            {(skill) => (
+              <div class="flex min-h-full flex-col">
+                <div class="flex items-start gap-3">
+                  <div class="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-v2-background-bg-layer-02">
+                    <Icon name="archive" />
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="m-0 text-[15px] text-v2-text-text-base [font-weight:600]">{skill().name}</h3>
+                    <p class="m-0 mt-1 text-[12px] leading-5 text-v2-text-text-muted">
+                      {skill().description || skill().id}
+                    </p>
+                  </div>
+                </div>
+                <dl class="mt-6 grid grid-cols-[110px_1fr] gap-y-3 text-[12px]">
+                  <dt class="text-v2-text-text-muted">{language.t("openwork.settings.status")}</dt>
+                  <dd class="m-0 text-v2-text-text-base">
+                    {skill().enabled ? language.t("openwork.skills.enabled") : language.t("openwork.skills.disabled")}
+                  </dd>
+                  <dt class="text-v2-text-text-muted">{language.t("openwork.settings.source")}</dt>
+                  <dd class="m-0 text-v2-text-text-base">{skill().source}</dd>
+                  <dt class="text-v2-text-text-muted">ID</dt>
+                  <dd class="m-0 break-all font-mono text-v2-text-text-base">{skill().id}</dd>
+                </dl>
+                <Show when={skill().managed}>
+                  <div class="mt-auto flex flex-wrap gap-2 border-t border-v2-border-border-muted pt-4">
+                    <Show
+                      when={skill().installed}
+                      fallback={
+                        <ButtonV2
+                          disabled={state.busy}
+                          onClick={() =>
+                            mutate(() => api.skills.rollback(skill().id), language.t("openwork.skills.saved"))
+                          }
+                        >
+                          {language.t("openwork.skills.rollback")}
+                        </ButtonV2>
+                      }
+                    >
+                      <ButtonV2
+                        variant="contrast"
+                        disabled={state.busy}
+                        onClick={() =>
+                          mutate(
+                            () => api.skills.setEnabled(skill().id, !skill().enabled),
+                            language.t("openwork.skills.saved"),
+                          )
+                        }
+                      >
+                        {skill().enabled ? language.t("openwork.skills.disable") : language.t("openwork.skills.enable")}
+                      </ButtonV2>
+                      <ButtonV2 disabled={state.busy} onClick={() => void api.skills.exportZip(skill().id)}>
+                        {language.t("openwork.skills.export")}
+                      </ButtonV2>
+                      <Show when={skill().hasBackup}>
+                        <ButtonV2
+                          disabled={state.busy}
+                          onClick={() =>
+                            mutate(() => api.skills.rollback(skill().id), language.t("openwork.skills.saved"))
+                          }
+                        >
+                          {language.t("openwork.skills.rollback")}
+                        </ButtonV2>
+                      </Show>
+                      <ButtonV2
+                        class="ml-auto"
+                        variant="danger"
+                        disabled={state.busy}
+                        onClick={() =>
+                          mutate(() => api.skills.uninstall(skill().id), language.t("openwork.skills.uninstalled"))
+                        }
+                      >
+                        {language.t("openwork.skills.uninstall")}
+                      </ButtonV2>
+                    </Show>
+                  </div>
+                </Show>
+              </div>
+            )}
+          </Show>
+        </div>
+      </div>
+    </OpenWorkSettingsPage>
+  )
+}
+
+export function SettingsOpenWorkMcp() {
+  const platform = usePlatform()
+  const language = useLanguage()
+  const api = platform.openwork
+  const [state, setState] = createStore({
+    items: [] as OpenWorkMcpServer[],
+    selectedName: "",
+    importing: false,
+    input: "",
+    preview: "",
+    busy: false,
+    status: "",
+    error: "",
+  })
+  const selected = createMemo(() => state.items.find((server) => server.name === state.selectedName) ?? state.items[0])
+
+  async function run(operation: () => Promise<void>, success?: string) {
+    setState({ busy: true, status: "", error: "" })
+    try {
+      await operation()
+      if (success) setState("status", success)
+    } catch (cause) {
+      setState("error", errorMessage(cause))
+    } finally {
+      setState("busy", false)
+    }
+  }
+
+  async function refresh() {
     if (!api) return
-    void act(async () => {
-      const preview = await api.mcp.previewImport(mcpInput())
-      setMcpPreview(
-        `${preview.format}: ${preview.servers.map((server) => server.name).join(", ")}${
-          preview.warnings.length ? ` · ${preview.warnings.length} secret field(s)` : ""
-        }`,
+    setState("items", await api.mcp.list())
+  }
+
+  onMount(() => void run(refresh))
+  createEffect(() => {
+    if (state.items.some((server) => server.name === state.selectedName)) return
+    setState("selectedName", state.items[0]?.name ?? "")
+  })
+
+  function preview() {
+    if (!api) return
+    void run(async () => {
+      const result = await api.mcp.previewImport(state.input)
+      setState(
+        "preview",
+        `${result.format} · ${result.servers.map((server) => server.name).join(", ")}${result.warnings.length ? ` · ${result.warnings.length} ${language.t("openwork.mcp.secrets")}` : ""}`,
       )
     })
   }
 
-  function applyMcp() {
+  function apply() {
     if (!api) return
-    void act(async () => {
-      const result = await api.mcp.applyImport(mcpInput())
-      setServers(result.servers)
-      setMcpInput("")
-      setMcpPreview("")
-      setStatus(
+    void run(async () => {
+      const result = await api.mcp.applyImport(state.input)
+      setState({ items: result.servers, input: "", preview: "", importing: false })
+      setState(
+        "status",
         result.restartRequired ? language.t("openwork.mcp.restartRequired") : language.t("openwork.mcp.import.success"),
       )
     })
   }
 
-  function mutateMcp(operation: () => Promise<{ servers: OpenWorkMcpServer[]; restartRequired: boolean }>) {
-    void act(async () => {
+  function mutate(operation: () => Promise<{ servers: OpenWorkMcpServer[]; restartRequired: boolean }>) {
+    if (!api) return
+    void run(async () => {
       const result = await operation()
-      setServers(result.servers)
-      setStatus(result.restartRequired ? language.t("openwork.mcp.restartRequired") : language.t("openwork.mcp.saved"))
+      setState("items", result.servers)
+      setState(
+        "status",
+        result.restartRequired ? language.t("openwork.mcp.restartRequired") : language.t("openwork.mcp.saved"),
+      )
     })
   }
 
+  if (!api) return <OpenWorkUnavailable />
   return (
-    <Dialog size="x-large" variant="settings" class="!h-[min(760px,calc(100vh-16px))]">
-      <DialogHeader>
-        <DialogTitle>{language.t("openwork.control.title")}</DialogTitle>
-      </DialogHeader>
-      <DividerV2 />
-      <DialogBody class="flex min-h-0 flex-1 flex-col gap-3 px-4 py-4">
-        <div class="flex shrink-0 gap-2" role="tablist">
-          <For each={["skills", "mcp", "usage"] as const}>
-            {(item) => (
-              <ButtonV2
-                variant={tab() === item ? "contrast" : "neutral"}
-                onClick={() => {
-                  setTab(item)
-                  setError("")
-                  setStatus("")
-                }}
-              >
-                {language.t(`openwork.tab.${item}`)}
-              </ButtonV2>
-            )}
-          </For>
-        </div>
-
-        <Show when={error()}>
-          <div class="shrink-0 rounded-[6px] bg-v2-state-bg-danger px-3 py-2 text-[12px] text-v2-state-fg-danger">
-            {error()}
-          </div>
-        </Show>
-        <Show when={status()}>
-          <div class="shrink-0 rounded-[6px] bg-v2-background-bg-layer-02 px-3 py-2 text-[12px] text-v2-text-text-base">
-            {status()}
-          </div>
-        </Show>
-
-        <Show when={tab() === "skills"}>
-          <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-            <div class="flex items-center justify-between gap-3">
-              <p class="m-0 text-[12px] leading-5 text-v2-text-text-muted">
-                {language.t("openwork.skills.description")}
-              </p>
-              <ButtonV2 icon="plus" variant="contrast" disabled={busy() || !api} onClick={chooseSkillZip}>
-                {language.t("openwork.skills.choose")}
-              </ButtonV2>
+    <OpenWorkSettingsPage
+      title={language.t("openwork.settings.mcp.title")}
+      description={language.t("openwork.mcp.description")}
+      action={
+        <ButtonV2 icon="plus" variant="contrast" disabled={state.busy} onClick={() => setState("importing", true)}>
+          {language.t("openwork.mcp.import")}
+        </ButtonV2>
+      }
+      status={state.status}
+      error={state.error}
+    >
+      <Show
+        when={state.importing}
+        fallback={
+          <div class="flex min-h-0 flex-1 overflow-hidden rounded-[9px] border border-v2-border-border-muted bg-v2-background-bg-base">
+            <div class="w-[230px] shrink-0 overflow-y-auto border-r border-v2-border-border-muted py-1.5">
+              <Show when={state.items.length} fallback={<EmptyState text={language.t("openwork.mcp.empty")} />}>
+                <For each={state.items}>
+                  {(server) => (
+                    <button
+                      type="button"
+                      data-selected={selected()?.name === server.name ? "" : undefined}
+                      class="flex w-full items-center gap-2 border-0 bg-transparent px-3 py-2 text-left hover:bg-v2-overlay-simple-overlay-hover data-[selected]:bg-v2-background-bg-layer-02 focus-visible:outline-none"
+                      onClick={() => setState("selectedName", server.name)}
+                    >
+                      <span
+                        class={`size-2 shrink-0 rounded-full ${server.enabled ? "bg-v2-state-fg-success" : "bg-v2-icon-icon-disabled"}`}
+                      />
+                      <span class="min-w-0 flex-1 truncate text-[12px] text-v2-text-text-base">{server.name}</span>
+                    </button>
+                  )}
+                </For>
+              </Show>
             </div>
-            <Show when={skillPending()}>
-              {(pending) => (
-                <div class="flex items-center gap-3 rounded-[8px] border border-v2-border-border-focus bg-v2-background-bg-layer-01 px-3 py-3">
-                  <Icon name="archive" class="shrink-0 text-v2-icon-icon-muted" />
-                  <div class="min-w-0 flex-1">
-                    <div class="text-[13px] text-v2-text-text-base [font-weight:560]">{pending().preview.name}</div>
-                    <p class="m-0 mt-1 text-[12px] text-v2-text-text-muted">
-                      {pending().preview.fileCount} {language.t("openwork.skills.preview.files")} ·{" "}
-                      {Math.ceil(pending().preview.uncompressedBytes / 1024)} KB
-                      {pending().preview.replacesExisting ? ` · ${language.t("openwork.skills.preview.replace")}` : ""}
-                    </p>
-                  </div>
-                  <ButtonV2 disabled={busy()} onClick={() => setSkillPending(undefined)}>
-                    {language.t("common.cancel")}
-                  </ButtonV2>
-                  <ButtonV2 variant="contrast" disabled={busy()} onClick={confirmSkillInstall}>
-                    {language.t("openwork.skills.install")}
-                  </ButtonV2>
-                </div>
-              )}
-            </Show>
-            <Show when={skills().length > 0} fallback={<EmptyState text={language.t("openwork.skills.empty")} />}>
-              <For each={skills()}>
-                {(skill) => (
-                  <div class="flex items-center gap-3 rounded-[8px] border border-v2-border-border-muted px-3 py-3">
-                    <Icon name={skill.enabled ? "check" : "archive"} class="shrink-0 text-v2-icon-icon-muted" />
-                    <div class="min-w-0 flex-1">
-                      <div class="flex items-center gap-2 text-[13px] text-v2-text-text-base [font-weight:560]">
-                        <span class="truncate">{skill.name}</span>
-                        <span class="rounded bg-v2-background-bg-layer-02 px-1.5 py-0.5 text-[10px] text-v2-text-text-muted">
-                          {skill.source}
-                        </span>
-                        <Show when={!skill.installed}>
-                          <span class="rounded bg-v2-background-bg-layer-02 px-1.5 py-0.5 text-[10px] text-v2-text-text-muted">
-                            {language.t("openwork.skills.backupOnly")}
-                          </span>
-                        </Show>
+            <div class="min-w-0 flex-1 overflow-y-auto p-5">
+              <Show when={selected()} fallback={<EmptyState text={language.t("openwork.mcp.empty")} />}>
+                {(server) => (
+                  <div class="flex min-h-full flex-col">
+                    <div class="flex items-start gap-3">
+                      <div class="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-v2-background-bg-layer-02">
+                        <Icon name="server" />
                       </div>
-                      <p class="m-0 mt-1 line-clamp-2 text-[12px] leading-4 text-v2-text-text-muted">
-                        {skill.description || skill.id}
-                      </p>
+                      <div class="min-w-0 flex-1">
+                        <h3 class="m-0 text-[15px] text-v2-text-text-base [font-weight:600]">{server().name}</h3>
+                        <p class="m-0 mt-1 text-[12px] leading-5 text-v2-text-text-muted">{server().summary}</p>
+                      </div>
                     </div>
-                    <Show when={skill.managed}>
-                      <div class="flex shrink-0 flex-wrap justify-end gap-1">
-                        <Show
-                          when={skill.installed}
-                          fallback={
-                            <ButtonV2
-                              size="small"
-                              disabled={busy()}
-                              onClick={() =>
-                                mutateSkill(() => api!.skills.rollback(skill.id), language.t("openwork.skills.saved"))
-                              }
-                            >
-                              {language.t("openwork.skills.rollback")}
-                            </ButtonV2>
-                          }
-                        >
-                          <ButtonV2
-                            size="small"
-                            disabled={busy()}
-                            onClick={() =>
-                              mutateSkill(
-                                () => api!.skills.setEnabled(skill.id, !skill.enabled),
-                                language.t("openwork.skills.saved"),
-                              )
-                            }
-                          >
-                            {skill.enabled
-                              ? language.t("openwork.skills.disable")
-                              : language.t("openwork.skills.enable")}
-                          </ButtonV2>
-                          <ButtonV2 size="small" disabled={busy()} onClick={() => void api!.skills.exportZip(skill.id)}>
-                            {language.t("openwork.skills.export")}
-                          </ButtonV2>
-                          <Show when={skill.hasBackup}>
-                            <ButtonV2
-                              size="small"
-                              disabled={busy()}
-                              onClick={() =>
-                                mutateSkill(() => api!.skills.rollback(skill.id), language.t("openwork.skills.saved"))
-                              }
-                            >
-                              {language.t("openwork.skills.rollback")}
-                            </ButtonV2>
-                          </Show>
-                          <ButtonV2
-                            size="small"
-                            variant="danger"
-                            disabled={busy()}
-                            onClick={() =>
-                              mutateSkill(
-                                () => api!.skills.uninstall(skill.id),
-                                language.t("openwork.skills.uninstalled"),
-                              )
-                            }
-                          >
-                            {language.t("openwork.skills.uninstall")}
-                          </ButtonV2>
-                        </Show>
-                      </div>
-                    </Show>
+                    <dl class="mt-6 grid grid-cols-[110px_1fr] gap-y-3 text-[12px]">
+                      <dt class="text-v2-text-text-muted">{language.t("openwork.settings.status")}</dt>
+                      <dd class="m-0 text-v2-text-text-base">
+                        {server().enabled
+                          ? language.t("openwork.skills.enabled")
+                          : language.t("openwork.skills.disabled")}
+                      </dd>
+                      <dt class="text-v2-text-text-muted">{language.t("openwork.settings.type")}</dt>
+                      <dd class="m-0 text-v2-text-text-base">{server().type}</dd>
+                      <dt class="text-v2-text-text-muted">{language.t("openwork.mcp.secrets")}</dt>
+                      <dd class="m-0 text-v2-text-text-base">{server().secretFields.length}</dd>
+                    </dl>
+                    <div class="mt-auto flex gap-2 border-t border-v2-border-border-muted pt-4">
+                      <ButtonV2
+                        variant="contrast"
+                        disabled={state.busy}
+                        onClick={() => mutate(() => api.mcp.setEnabled(server().name, !server().enabled))}
+                      >
+                        {server().enabled
+                          ? language.t("openwork.skills.disable")
+                          : language.t("openwork.skills.enable")}
+                      </ButtonV2>
+                      <ButtonV2
+                        class="ml-auto"
+                        variant="danger"
+                        disabled={state.busy}
+                        onClick={() => mutate(() => api.mcp.remove(server().name))}
+                      >
+                        {language.t("common.delete")}
+                      </ButtonV2>
+                    </div>
                   </div>
                 )}
-              </For>
-            </Show>
+              </Show>
+            </div>
           </div>
-        </Show>
-
-        <Show when={tab() === "mcp"}>
-          <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-            <p class="m-0 text-[12px] leading-5 text-v2-text-text-muted">{language.t("openwork.mcp.description")}</p>
+        }
+      >
+        <div class="min-h-0 flex-1 overflow-y-auto rounded-[9px] border border-v2-border-border-muted bg-v2-background-bg-base p-5">
+          <div class="mx-auto max-w-[620px]">
+            <div class="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 class="m-0 text-[15px] text-v2-text-text-base [font-weight:600]">
+                  {language.t("openwork.settings.mcp.importTitle")}
+                </h3>
+                <p class="m-0 mt-1 text-[12px] leading-5 text-v2-text-text-muted">
+                  {language.t("openwork.settings.mcp.importDescription")}
+                </p>
+              </div>
+              <ButtonV2 size="small" onClick={() => setState("importing", false)}>
+                {language.t("common.cancel")}
+              </ButtonV2>
+            </div>
             <TextareaV2
-              class="!w-full [&_[data-slot=textarea-v2-textarea]]:min-h-28 [&_[data-slot=textarea-v2-textarea]]:font-mono"
-              rows={6}
+              class="!w-full [&_[data-slot=textarea-v2-textarea]]:min-h-52 [&_[data-slot=textarea-v2-textarea]]:font-mono"
+              rows={10}
               spellcheck={false}
-              value={mcpInput()}
+              value={state.input}
               placeholder={language.t("openwork.mcp.placeholder")}
-              onInput={(event) => setMcpInput(event.currentTarget.value)}
+              onInput={(event) => setState("input", event.currentTarget.value)}
             />
-            <div class="flex items-center gap-2">
-              <ButtonV2 disabled={busy() || !mcpInput().trim()} onClick={previewMcp}>
+            <Show when={state.preview}>
+              <p class="m-0 mt-3 rounded-[6px] bg-v2-background-bg-layer-02 px-3 py-2 text-[12px] text-v2-text-text-base">
+                {state.preview}
+              </p>
+            </Show>
+            <div class="mt-4 flex gap-2">
+              <ButtonV2 disabled={state.busy || !state.input.trim()} onClick={preview}>
                 {language.t("openwork.mcp.preview")}
               </ButtonV2>
-              <ButtonV2 variant="contrast" disabled={busy() || !mcpInput().trim()} onClick={applyMcp}>
+              <ButtonV2 variant="contrast" disabled={state.busy || !state.input.trim()} onClick={apply}>
                 {language.t("openwork.mcp.import")}
               </ButtonV2>
-              <ButtonV2 class="ml-auto" disabled={busy()} onClick={() => mutateMcp(() => api!.mcp.restoreLatest())}>
+              <ButtonV2 class="ml-auto" disabled={state.busy} onClick={() => mutate(() => api.mcp.restoreLatest())}>
                 {language.t("openwork.mcp.restore")}
               </ButtonV2>
             </div>
-            <Show when={mcpPreview()}>
-              <p class="m-0 text-[12px] text-v2-text-text-base">{mcpPreview()}</p>
-            </Show>
-            <Show when={servers().length > 0} fallback={<EmptyState text={language.t("openwork.mcp.empty")} />}>
-              <For each={servers()}>
-                {(server) => (
-                  <div class="flex items-center gap-3 rounded-[8px] border border-v2-border-border-muted px-3 py-3">
-                    <Icon name={server.enabled ? "status-active" : "status"} class="shrink-0 text-v2-icon-icon-muted" />
-                    <div class="min-w-0 flex-1">
-                      <div class="text-[13px] text-v2-text-text-base [font-weight:560]">{server.name}</div>
-                      <p class="m-0 mt-1 truncate text-[12px] text-v2-text-text-muted">
-                        {server.type} · {server.summary}
-                        {server.secretFields.length
-                          ? ` · ${server.secretFields.length} ${language.t("openwork.mcp.secrets")}`
-                          : ""}
-                      </p>
-                    </div>
-                    <ButtonV2
-                      size="small"
-                      disabled={busy()}
-                      onClick={() => mutateMcp(() => api!.mcp.setEnabled(server.name, !server.enabled))}
-                    >
-                      {server.enabled ? language.t("openwork.skills.disable") : language.t("openwork.skills.enable")}
-                    </ButtonV2>
-                    <ButtonV2
-                      size="small"
-                      variant="danger"
-                      disabled={busy()}
-                      onClick={() => mutateMcp(() => api!.mcp.remove(server.name))}
-                    >
-                      {language.t("common.delete")}
-                    </ButtonV2>
-                  </div>
-                )}
-              </For>
-            </Show>
           </div>
-        </Show>
+        </div>
+      </Show>
+    </OpenWorkSettingsPage>
+  )
+}
 
-        <Show when={tab() === "usage"}>
-          <UsagePanel usage={usage()} refresh={() => void act(refresh)} busy={busy()} />
+export function SettingsOpenWorkUsage() {
+  const platform = usePlatform()
+  const language = useLanguage()
+  const api = platform.openwork
+  const [state, setState] = createStore<{ usage?: OpenWorkUsage; busy: boolean; error: string }>({
+    busy: false,
+    error: "",
+  })
+
+  async function refresh() {
+    if (!api) return
+    setState({ busy: true, error: "" })
+    try {
+      setState("usage", await api.usage.get())
+    } catch (cause) {
+      setState("error", errorMessage(cause))
+    } finally {
+      setState("busy", false)
+    }
+  }
+
+  onMount(() => void refresh())
+  if (!api) return <OpenWorkUnavailable />
+  return (
+    <OpenWorkSettingsPage
+      title={language.t("openwork.settings.usage.title")}
+      description={language.t("openwork.settings.usage.description")}
+      action={
+        <ButtonV2 disabled={state.busy} onClick={() => void refresh()}>
+          {language.t("openwork.refresh")}
+        </ButtonV2>
+      }
+      error={state.error}
+    >
+      <div class="min-h-0 flex-1 overflow-y-auto rounded-[9px] border border-v2-border-border-muted bg-v2-background-bg-base p-5">
+        <Show when={state.usage} fallback={<EmptyState text={language.t("common.loading")} />}>
+          {(usage) => (
+            <div class="mx-auto max-w-[620px]">
+              <div class="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <div class="inline-flex rounded-full bg-v2-background-bg-layer-02 px-2.5 py-1 text-[11px] text-v2-text-text-base">
+                    {usage().source}
+                  </div>
+                  <p class="m-0 mt-3 text-[12px] leading-5 text-v2-text-text-muted">{usage().notice}</p>
+                </div>
+                <span class="text-[11px] text-v2-text-text-muted">{new Date(usage().asOf).toLocaleString()}</span>
+              </div>
+              <div class="divide-y divide-v2-border-border-muted border-y border-v2-border-border-muted">
+                <For each={usage().periods}>
+                  {(period) => {
+                    const percent = () => Math.max(0, Math.min(100, (period.used / period.limit) * 100))
+                    return (
+                      <div class="py-4">
+                        <div class="mb-2 flex items-center justify-between text-[12px]">
+                          <span class="text-v2-text-text-base [font-weight:560]">
+                            {language.t(`openwork.usage.period.${period.id}`)}
+                          </span>
+                          <span class="text-v2-text-text-muted">
+                            ${period.used.toFixed(2)} / ${period.limit.toFixed(2)}
+                          </span>
+                        </div>
+                        <div class="h-1.5 overflow-hidden rounded-full bg-v2-background-bg-layer-02">
+                          <div class="h-full rounded-full bg-v2-icon-icon-base" style={{ width: `${percent()}%` }} />
+                        </div>
+                      </div>
+                    )
+                  }}
+                </For>
+              </div>
+              <div class="mt-4 flex items-center justify-between text-[11px] text-v2-text-text-muted">
+                <span>
+                  {usage().sessionCount} {language.t("openwork.usage.sessions")}
+                </span>
+                <ButtonV2 variant="outline" onClick={() => platform.openLink(usage().documentationUrl)}>
+                  {language.t("openwork.usage.docs")}
+                </ButtonV2>
+              </div>
+            </div>
+          )}
         </Show>
-      </DialogBody>
-    </Dialog>
+      </div>
+    </OpenWorkSettingsPage>
+  )
+}
+
+function OpenWorkSettingsPage(props: {
+  title: string
+  description: string
+  action?: JSX.Element
+  status?: string
+  error?: string
+  children: JSX.Element
+}) {
+  return (
+    <div class="flex h-full min-h-0 flex-col px-6 py-5">
+      <div class="mb-4 flex shrink-0 items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h2 class="m-0 text-[18px] tracking-[-0.2px] text-v2-text-text-base [font-weight:620]">{props.title}</h2>
+          <p class="m-0 mt-1 max-w-[640px] text-[12px] leading-5 text-v2-text-text-muted">{props.description}</p>
+        </div>
+        {props.action}
+      </div>
+      <Show when={props.error}>
+        <div
+          role="alert"
+          class="mb-3 shrink-0 rounded-[6px] bg-v2-state-bg-danger px-3 py-2 text-[12px] text-v2-state-fg-danger"
+        >
+          {props.error}
+        </div>
+      </Show>
+      <Show when={props.status}>
+        <div
+          role="status"
+          class="mb-3 shrink-0 rounded-[6px] bg-v2-background-bg-layer-02 px-3 py-2 text-[12px] text-v2-text-text-base"
+        >
+          {props.status}
+        </div>
+      </Show>
+      {props.children}
+    </div>
+  )
+}
+
+function OpenWorkUnavailable() {
+  const language = useLanguage()
+  return (
+    <div class="p-6">
+      <EmptyState text={language.t("openwork.settings.desktopOnly")} />
+    </div>
   )
 }
 
 function EmptyState(props: { text: string }) {
-  return (
-    <div class="rounded-[8px] border border-dashed border-v2-border-border-muted px-4 py-8 text-center text-[12px] text-v2-text-text-muted">
-      {props.text}
-    </div>
-  )
+  return <div class="px-4 py-8 text-center text-[12px] text-v2-text-text-muted">{props.text}</div>
 }
 
-function UsagePanel(props: { usage?: OpenWorkUsage; refresh: () => void; busy: boolean }) {
-  const language = useLanguage()
-  const platform = usePlatform()
-  return (
-    <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <h2 class="m-0 text-[15px] text-v2-text-text-base [font-weight:600]">{language.t("openwork.usage.title")}</h2>
-          <p class="m-0 mt-1 text-[12px] leading-5 text-v2-text-text-muted">
-            {props.usage?.notice ?? language.t("common.loading")}
-          </p>
-        </div>
-        <ButtonV2 disabled={props.busy} onClick={props.refresh}>
-          {language.t("openwork.refresh")}
-        </ButtonV2>
-      </div>
-      <Show when={props.usage}>
-        {(usage) => (
-          <>
-            <div class="rounded-[8px] bg-v2-background-bg-layer-01 px-3 py-2 text-[12px] text-v2-text-text-muted">
-              {language.t("openwork.usage.source")}: {usage().source} · {usage().sessionCount}{" "}
-              {language.t("openwork.usage.sessions")}
-            </div>
-            <For each={usage().periods}>
-              {(period) => {
-                const percent = () => Math.max(0, Math.min(100, (period.used / period.limit) * 100))
-                return (
-                  <div class="flex flex-col gap-2 rounded-[8px] border border-v2-border-border-muted px-3 py-3">
-                    <div class="flex items-center justify-between text-[13px]">
-                      <span class="text-v2-text-text-base [font-weight:560]">
-                        {language.t(`openwork.usage.period.${period.id}`)}
-                      </span>
-                      <span class="text-v2-text-text-muted">
-                        ${period.used.toFixed(2)} / ${period.limit.toFixed(2)}
-                      </span>
-                    </div>
-                    <div class="h-2 overflow-hidden rounded-full bg-v2-background-bg-layer-02">
-                      <div class="h-full rounded-full bg-v2-icon-icon-base" style={{ width: `${percent()}%` }} />
-                    </div>
-                  </div>
-                )
-              }}
-            </For>
-            <ButtonV2 variant="outline" onClick={() => platform.openLink(usage().documentationUrl)}>
-              {language.t("openwork.usage.docs")}
-            </ButtonV2>
-          </>
-        )}
-      </Show>
-    </div>
-  )
+function errorMessage(cause: unknown) {
+  return cause instanceof Error ? cause.message : String(cause)
 }

@@ -74,7 +74,8 @@ import {
   retainHomeSessions,
   type HomeSessionEvents,
 } from "@/context/global-sync/home-session-index"
-import { DialogOpenWorkControlCenter, OpenWorkLaunchpad } from "@/components/openwork-control-center"
+import { OpenWorkLaunchpad } from "@/components/openwork-control-center"
+import type { WorkSpec } from "@/openwork/work-spec"
 
 const HOME_SESSION_LIMIT = 64
 const HOME_SESSION_HEADER_STICKY_TOP = 12
@@ -552,7 +553,7 @@ export function NewHome() {
     void tabs.newDraft({ server: ServerConnection.key(conn), directory })
   }
 
-  function openQuickTask(prompt: string) {
+  function openQuickTask(workSpec: WorkSpec) {
     const conn = focusedServer()
     const project = newSessionProject()
     if (!conn) return
@@ -564,19 +565,19 @@ export function NewHome() {
           const directory = homeProjectDirectories(result)[0]
           if (!directory) return
           addProjects(conn, [directory])
-          startQuickTask(conn, directory, prompt)
+          startQuickTask(conn, directory, workSpec)
         },
       })
       return
     }
-    startQuickTask(conn, project.worktree, prompt)
+    startQuickTask(conn, project.worktree, workSpec)
   }
 
-  function startQuickTask(conn: ServerConnection.Any, directory: string, prompt: string) {
+  function startQuickTask(conn: ServerConnection.Any, directory: string, workSpec: WorkSpec) {
     const ctx = global.ensureServerCtx(conn)
     ctx.projects.open(directory)
     ctx.projects.touch(directory)
-    void tabs.newDraft({ server: ServerConnection.key(conn), directory }, prompt)
+    void tabs.newDraft({ server: ServerConnection.key(conn), directory, workSpec }, workSpec.goal)
   }
 
   function editProject(conn: ServerConnection.Any, project: LocalProject) {
@@ -761,11 +762,7 @@ export function NewHome() {
             </div>
             <div class="-mr-3 min-h-[calc(100cqh-72px)] lg:min-h-[calc(100cqh-96px)]">
               <div class="pr-3 pt-3">
-                <OpenWorkLaunchpad
-                  disabled={!focusedServer()}
-                  onTask={openQuickTask}
-                  onManage={() => void dialog.show(() => <DialogOpenWorkControlCenter />)}
-                />
+                <OpenWorkLaunchpad disabled={!focusedServer()} onTask={openQuickTask} />
               </div>
               <Show
                 when={!sessionLoad.isLoading}

@@ -633,24 +633,35 @@ export const dict = {
   "openwork.home.title": "What would you like to work on?",
   "openwork.home.description": "Start with a practical task, or open a project for a development workflow.",
   "openwork.home.projectRequired": "Connect a server to start one of these tasks.",
+  "openwork.composer.placeholder":
+    "Describe what you want to accomplish. OpenWork will inspect the workspace, fill in safe defaults, and verify the result.",
+  "openwork.composer.start": "Start task",
+  "openwork.autonomy.label": "Execution mode",
+  "openwork.autonomy.plan": "Plan",
+  "openwork.autonomy.plan.description": "Inspect and prepare a plan without making changes.",
+  "openwork.autonomy.collaborate": "Collaborate",
+  "openwork.autonomy.collaborate.description":
+    "Make safe workspace changes and ask before material or external actions.",
+  "openwork.autonomy.agent": "Agent",
+  "openwork.autonomy.agent.description": "Complete safe workspace work autonomously and verify the result.",
   "openwork.manage": "Skills, MCP & usage",
   "openwork.refresh": "Refresh",
   "openwork.task.document.title": "Write a document",
   "openwork.task.document.description": "Draft, revise, summarize, or format a document.",
   "openwork.task.document.prompt":
-    "Help me create a polished document. First ask for the audience, purpose, source material, and desired format.",
+    "Create a polished, editable document from the material in this workspace. Infer safe defaults, ask only about choices that materially affect the result, and verify the final file.",
   "openwork.task.research.title": "Research a topic",
   "openwork.task.research.description": "Find sources, compare evidence, and produce a cited brief.",
   "openwork.task.research.prompt":
-    "Help me research a topic. First ask for the research question, scope, deadline, and preferred output.",
+    "Research this topic using credible sources, compare the evidence, and deliver a concise cited brief. Infer a useful scope and surface any important uncertainty.",
   "openwork.task.data.title": "Analyze data",
   "openwork.task.data.description": "Inspect a dataset, validate it, and explain the findings.",
   "openwork.task.data.prompt":
-    "Help me analyze data. First ask me to attach or identify the data and clarify the decision this analysis should support.",
+    "Inspect the available data, validate its quality, analyze the most decision-relevant patterns, and deliver an editable workbook with a concise findings summary.",
   "openwork.task.presentation.title": "Build a presentation",
   "openwork.task.presentation.description": "Turn an idea or source material into a clear slide deck.",
   "openwork.task.presentation.prompt":
-    "Help me build a presentation. First ask for the audience, goal, duration, brand constraints, and source material.",
+    "Turn the available material into a clear, visually coherent presentation. Infer a sensible audience and narrative, then deliver and verify the editable deck.",
   "openwork.task.code.title": "Develop software",
   "openwork.task.code.description": "Implement, diagnose, review, test, and ship code.",
   "openwork.task.code.prompt":
@@ -675,6 +686,8 @@ export const dict = {
   "openwork.skills.rollback": "Rollback",
   "openwork.skills.uninstall": "Uninstall",
   "openwork.skills.uninstalled": "Skill removed. A recoverable backup was retained.",
+  "openwork.skills.enabled": "Enabled",
+  "openwork.skills.disabled": "Disabled",
   "openwork.mcp.description":
     "Paste OpenCode JSON/JSONC, Claude mcpServers JSON, or a server map. Detected secrets are moved to the encrypted desktop vault.",
   "openwork.mcp.placeholder": "Paste JSON or JSONC containing mcp or mcpServers…",
@@ -693,6 +706,18 @@ export const dict = {
   "openwork.usage.period.weekly": "Rolling 7 days",
   "openwork.usage.period.monthly": "Rolling 30 days",
   "openwork.usage.docs": "Open official Go documentation",
+  "openwork.settings.skills.title": "Skills",
+  "openwork.settings.mcp.title": "MCP connections",
+  "openwork.settings.mcp.importTitle": "Import MCP configuration",
+  "openwork.settings.mcp.importDescription":
+    "Paste OpenCode JSON/JSONC, Claude mcpServers, or a raw server map. Review detected connections and secrets before writing configuration.",
+  "openwork.settings.usage.title": "Account usage",
+  "openwork.settings.usage.description":
+    "Review official OpenCode Go usage when available and the clearly labelled local estimate used as a fallback.",
+  "openwork.settings.status": "Status",
+  "openwork.settings.source": "Source",
+  "openwork.settings.type": "Type",
+  "openwork.settings.desktopOnly": "This OpenWork setting is available in the desktop application.",
 
   "session.tab.session": "Session",
   "session.tab.review": "Review",
@@ -904,6 +929,7 @@ export const dict = {
 
   "settings.section.desktop": "Desktop",
   "settings.section.server": "Server",
+  "settings.section.openwork": "OpenWork",
   "settings.tab.general": "General",
   "settings.tab.shortcuts": "Shortcuts",
   "settings.desktop.section.wsl": "WSL",

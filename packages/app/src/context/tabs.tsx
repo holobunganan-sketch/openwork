@@ -12,6 +12,7 @@ import { sessionHref } from "@/utils/session-route"
 import { createTabMemory } from "./tab-memory"
 import { nextTabAfterClose, pushClosedTab, removeClosedTabs, takeClosedTab, type ClosedTab } from "./closed-tabs"
 import { createDraftPromptSession, type PromptModel } from "./prompt-state"
+import type { WorkSpec } from "@/openwork/work-spec"
 
 export type SessionTab = {
   type: "session"
@@ -25,6 +26,7 @@ export type DraftTab = {
   server: ServerConnection.Key
   directory: string
   worktree?: string
+  workSpec?: WorkSpec
 }
 
 export type Tab = SessionTab | DraftTab

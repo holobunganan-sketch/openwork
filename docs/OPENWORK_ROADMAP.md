@@ -11,9 +11,9 @@ This file mirrors the GitHub issue tracker so the delivery state remains reviewa
 - [x] Implement safe ZIP Skill preview, install, backup, rollback, export, and uninstall
 - [x] Implement MCP manager, JSON/JSONC import, secret vault, backup, restore, and tests
 - [x] Implement OpenCode Go usage adapter and clearly labelled local fallback
-- [ ] Produce Windows 11 x64 NSIS and portable artifacts
-- [ ] Run install, launch, coexistence, and uninstall smoke tests
-- [ ] Publish and validate `openwork-v0.1.0-rc.1`
-- [ ] Fix RC defects and publish `openwork-v0.1.0`
+- [x] Produce Windows 11 x64 NSIS and portable artifacts
+- [x] Run install, launch, coexistence, and uninstall smoke tests
+- [x] Publish and validate `openwork-v0.1.0-rc.1`
+- [x] Fix RC defects and publish `openwork-v0.1.0`
 
 Formal release gates are defined in the release workflow and release documentation. An unchecked item may not be reported as complete.

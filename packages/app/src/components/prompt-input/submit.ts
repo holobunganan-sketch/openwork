@@ -21,6 +21,7 @@ import { formatServerError } from "@/utils/server-errors"
 import { ScopedKey } from "@/utils/server-scope"
 import { createPromptSubmissionState } from "./submission-state"
 import type { WorkSpec } from "@/openwork/work-spec"
+import { useOpenWorkTasks } from "@/context/openwork-tasks"
 
 type PendingPrompt = {
   abort: AbortController
@@ -210,6 +211,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
   const params = useParams()
   const [search] = useSearchParams<{ draftId?: string }>()
   const tabs = useTabs()
+  const workTasks = useOpenWorkTasks()
   const pendingKey = (sessionID: string) => ScopedKey.from(sdk().scope, sessionID)
 
   const errorMessage = (err: unknown) => {
@@ -226,6 +228,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     if (!sessionID) return Promise.resolve()
 
     serverSync().session.set("todo", sessionID, [])
+    workTasks.transition(sdk().scope, sessionID, "paused")
 
     input.onAbort?.()
 
@@ -420,6 +423,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       variant,
       workSpec,
     }
+    const task = workTasks.get(sdk().scope, session.id)
 
     const clearInput = () => {
       submission.clear()
@@ -518,6 +522,9 @@ export function createPromptSubmit(input: PromptSubmitInput) {
 
     for (const item of commentItems) submission.target().context.remove(item.key)
     clearInput()
+    if (task) {
+      workTasks.transition(sdk().scope, session.id, "running", { resumed: task.status === "paused" })
+    }
 
     const waitForWorktree = async () => {
       const worktree = WorktreeState.get(sdk().scope, sessionDirectory)
@@ -594,6 +601,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
         title: language.t("prompt.toast.promptSendFailed.title"),
         description: errorMessage(err),
       })
+      workTasks.transition(sdk().scope, session.id, "failed", { detail: errorMessage(err) })
       removeOptimisticMessage()
       if (restoreInput()) restoreCommentItems(submission.target(), commentItems)
     })

@@ -13,6 +13,7 @@ import { createTabMemory } from "./tab-memory"
 import { nextTabAfterClose, pushClosedTab, removeClosedTabs, takeClosedTab, type ClosedTab } from "./closed-tabs"
 import { createDraftPromptSession, type PromptModel } from "./prompt-state"
 import type { WorkSpec } from "@/openwork/work-spec"
+import { useOpenWorkTasks } from "./openwork-tasks"
 
 export type SessionTab = {
   type: "session"
@@ -57,6 +58,7 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
   init: () => {
     const server = useServer()
     const platform = usePlatform()
+    const workTasks = useOpenWorkTasks()
     const fallback = server.key
     const [store, setStore, _, ready] = persisted(
       {
@@ -235,6 +237,15 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
       promoteDraft(draftID: string, session: Omit<SessionTab, "type">) {
         // Keep the replacement and navigation atomic so /new-session never renders
         // after its backing draft tab has been removed from the store.
+        const draft = actions.draft(draftID)
+        if (draft.workSpec) {
+          workTasks.create({
+            scope: draft.server,
+            sessionID: session.sessionId,
+            directory: draft.directory,
+            spec: draft.workSpec,
+          })
+        }
         const active = location.pathname === "/new-session" && location.query.draftId === draftID
         const next = { type: "session" as const, ...session }
         void startTransition(() => {

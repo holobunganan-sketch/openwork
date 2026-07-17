@@ -147,6 +147,13 @@ beforeAll(async () => {
     }),
   }))
 
+  mock.module("@/context/openwork-tasks", () => ({
+    useOpenWorkTasks: () => ({
+      get: () => undefined,
+      transition: () => undefined,
+    }),
+  }))
+
   mock.module("@/context/prompt", () => ({
     usePrompt: () => prompt,
   }))

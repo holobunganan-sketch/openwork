@@ -85,6 +85,8 @@ import { SessionReviewEmptyChangesV2 } from "@opencode-ai/session-ui/v2/session-
 import { SessionReviewEmptyNoGitV2 } from "@opencode-ai/session-ui/v2/session-review-empty-no-git-v2"
 import { SessionReviewV2SidebarToggle } from "@opencode-ai/session-ui/v2/session-review-v2"
 import { ReviewPanelV2 } from "@/pages/session/v2/review-panel-v2"
+import { OpenWorkTaskBar } from "@/components/openwork-task-bar"
+import { useOpenWorkTasks } from "@/context/openwork-tasks"
 import { createReviewPanelV2State } from "@/pages/session/v2/review-panel-v2-state"
 import { reviewDiffDirectory, reviewDiffNeedsLoad, reviewRootDirectory } from "@/pages/session/v2/review-diff-kinds"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
@@ -365,6 +367,7 @@ export default function Page() {
   const comments = useComments()
   const command = useCommand()
   const terminal = useTerminal()
+  const workTasks = useOpenWorkTasks()
   const [searchParams, setSearchParams] = useSearchParams<{ prompt?: string }>()
   const location = useLocation()
   const navigate = useNavigate()
@@ -1098,6 +1101,30 @@ export default function Page() {
     ),
   )
 
+  createEffect(() => {
+    const sessionID = params.id
+    if (!sessionID) return
+    const scope = serverSDK().scope
+    const task = workTasks.get(scope, sessionID)
+    if (!task) return
+    const current = sync().data.session_status[sessionID]
+    if (composer.blocked()) {
+      workTasks.transition(scope, sessionID, "waiting")
+      return
+    }
+    if (current?.type === "retry") {
+      workTasks.transition(scope, sessionID, "waiting", { detail: current.message })
+      return
+    }
+    if (current?.type === "busy") {
+      workTasks.transition(scope, sessionID, "running", { resumed: task.status === "paused" })
+      return
+    }
+    if (current?.type === "idle" && (task.status === "running" || task.status === "waiting")) {
+      workTasks.transition(scope, sessionID, "ready")
+    }
+  })
+
   const fileTreeTab = () => layout.fileTree.tab()
   const setFileTreeTab = (value: "changes" | "all") => layout.fileTree.setTab(value)
 
@@ -1754,6 +1781,11 @@ export default function Page() {
       if (input.manual) setFollowup("paused", input.sessionID, undefined)
       setFollowup("failed", input.sessionID, undefined)
 
+      const task = workTasks.get(serverSDK().scope, input.sessionID)
+      if (task) {
+        workTasks.transition(serverSDK().scope, input.sessionID, "running", { resumed: task.status === "paused" })
+      }
+
       const ok = await sendFollowupDraft({
         client: sdk().client,
         sync: sync(),
@@ -1762,6 +1794,9 @@ export default function Page() {
         optimisticBusy: item.sessionDirectory === sdk().directory,
       }).catch((err) => {
         setFollowup("failed", input.sessionID, input.id)
+        workTasks.transition(serverSDK().scope, input.sessionID, "failed", {
+          detail: formatServerError(err, language.t),
+        })
         fail(err)
         return false
       })
@@ -2169,6 +2204,29 @@ export default function Page() {
   const sessionPanelContent = () => (
     <>
       {sessionSync() ?? ""}
+      <Show when={params.id} keyed>
+        {(sessionID) => (
+          <OpenWorkTaskBar
+            scope={serverSDK().scope}
+            sessionID={sessionID}
+            working={busy(sessionID)}
+            blocked={composer.blocked()}
+            checkpointMessageID={lastUserMessage()?.id}
+            onPause={() => halt(sessionID)}
+            onContinue={() => inputRef?.focus()}
+            onRetry={() => {
+              const message = lastUserMessage()
+              if (message) prompt.set(draft(message.id))
+              inputRef?.focus()
+            }}
+            onRestore={(messageID) => {
+              const next = userMessages().find((message) => message.id > messageID)
+              if (!next) return
+              return revert({ sessionID, messageID: next.id })
+            }}
+          />
+        )}
+      </Show>
       <Show when={!isDesktop() && !!params.id && settings.general.newLayoutDesigns() && !mobileTabsBottom()}>
         {mobileTabs(true)}
       </Show>

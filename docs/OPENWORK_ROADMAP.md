@@ -23,7 +23,7 @@ Formal release gates are defined in the release workflow and release documentati
 - [x] Replace the card-based home with a task-first composer and lightweight work presets
 - [x] Add WorkSpec intent contracts and per-task autonomy modes
 - [x] Move Skills, MCP, and Go usage into the primary Settings information architecture
-- [ ] Add durable task state, activity journals, pause/resume, retry, and checkpoints
+- [x] Add durable task state, activity journals, pause/resume, retry, and checkpoints
 - [ ] Add workspace context assembly, source provenance, and material-question policy
 - [ ] Add composable Skill routing and scoped permissions
 - [ ] Add artifact management and type-specific verification

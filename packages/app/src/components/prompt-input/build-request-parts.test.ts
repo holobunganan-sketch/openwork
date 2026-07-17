@@ -75,6 +75,32 @@ describe("buildRequestParts", () => {
     expect(files.map((part) => (part.type === "file" ? part.filename : ""))).toEqual(["a.png", "b.pdf"])
   })
 
+  test("adds the OpenWork task contract as synthetic model context", () => {
+    const result = buildRequestParts({
+      prompt: [{ type: "text", content: "build the deck", start: 0, end: 14 }],
+      context: [],
+      images: [],
+      text: "build the deck",
+      messageID: "msg_work",
+      sessionID: "ses_work",
+      sessionDirectory: "/workspace",
+      workSpec: {
+        version: 1,
+        goal: "build the deck",
+        kind: "presentation",
+        autonomy: "collaborate",
+        deliverables: ["An editable presentation file"],
+        acceptanceCriteria: ["No text or objects overflow or overlap"],
+      },
+    })
+
+    const contract = result.requestParts.find(
+      (part) => part.type === "text" && part.synthetic && part.metadata?.openwork_work_spec === 1,
+    )
+    expect(contract?.type).toBe("text")
+    if (contract?.type === "text") expect(contract.text).toContain("No text or objects overflow or overlap")
+  })
+
   test("preserves an external attachment source path for the model", () => {
     const result = buildRequestParts({
       prompt: [],

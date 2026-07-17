@@ -20,6 +20,7 @@ import { setCursorPosition } from "./editor-dom"
 import { formatServerError } from "@/utils/server-errors"
 import { ScopedKey } from "@/utils/server-scope"
 import { createPromptSubmissionState } from "./submission-state"
+import type { WorkSpec } from "@/openwork/work-spec"
 
 type PendingPrompt = {
   abort: AbortController
@@ -36,6 +37,7 @@ export type FollowupDraft = {
   agent: string
   model: { providerID: string; modelID: string }
   variant?: string
+  workSpec?: WorkSpec
 }
 
 type FollowupSendInput = {
@@ -112,6 +114,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
     sessionID: input.draft.sessionID,
     messageID,
     sessionDirectory: input.draft.sessionDirectory,
+    workSpec: input.draft.workSpec,
   })
 
   const message: Message = {
@@ -293,6 +296,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     const text = currentPrompt.map((part) => ("content" in part ? part.content : "")).join("")
     const images = input.imageAttachments().slice()
     const mode = input.mode()
+    const workSpec = search.draftId ? tabs.draft(search.draftId).workSpec : undefined
 
     if (text.trim().length === 0 && images.length === 0 && input.commentCount() === 0) {
       if (input.working()) void abort()
@@ -317,7 +321,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     const projectDirectory = sdk().directory
     const permissionState = permission.currentServerState()
     const isNewSession = !params.id
-    const shouldAutoAccept = isNewSession && input.autoAccept()
+    const shouldAutoAccept = isNewSession && (input.autoAccept() || workSpec?.autonomy === "agent")
     const worktreeSelection = input.newSessionWorktree?.() || "main"
 
     let sessionDirectory = projectDirectory
@@ -414,6 +418,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       agent,
       model,
       variant,
+      workSpec,
     }
 
     const clearInput = () => {

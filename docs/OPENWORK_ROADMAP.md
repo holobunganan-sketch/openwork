@@ -17,3 +17,17 @@ This file mirrors the GitHub issue tracker so the delivery state remains reviewa
 - [x] Fix RC defects and publish `openwork-v0.1.0`
 
 Formal release gates are defined in the release workflow and release documentation. An unchecked item may not be reported as complete.
+
+## OpenWork 0.2.0
+
+- [x] Replace the card-based home with a task-first composer and lightweight work presets
+- [x] Add WorkSpec intent contracts and per-task autonomy modes
+- [x] Move Skills, MCP, and Go usage into the primary Settings information architecture
+- [ ] Add durable task state, activity journals, pause/resume, retry, and checkpoints
+- [ ] Add workspace context assembly, source provenance, and material-question policy
+- [ ] Add composable Skill routing and scoped permissions
+- [ ] Add artifact management and type-specific verification
+- [ ] Add user/project memory with view, edit, export, and delete controls
+- [ ] Add wish-prompt evaluations, accessibility, visual regression, and migration coverage
+- [ ] Publish and validate `openwork-v0.2.0-rc.1`
+- [ ] Fix RC defects and publish `openwork-v0.2.0`

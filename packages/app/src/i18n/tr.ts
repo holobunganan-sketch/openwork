@@ -1,8 +1,10 @@
 import { dict as en } from "./en"
+import { openworkFallback } from "./openwork-fallback"
 
 type Keys = keyof typeof en
 
 export const dict = {
+  ...openworkFallback,
   "command.category.suggested": "Önerilen",
   "command.category.view": "Görünüm",
   "command.category.project": "Proje",

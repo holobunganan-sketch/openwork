@@ -236,7 +236,7 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
         const draft = actions.draft(draftID)
         if (draft.workSpec) {
           workTasks.create({
-            scope: draft.server,
+            scope: server.scope(draft.server),
             sessionID: session.sessionId,
             directory: draft.directory,
             spec: draft.workSpec,

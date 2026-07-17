@@ -16,6 +16,7 @@ import {
 import type { ContextGraph } from "@/openwork/context-graph"
 import type { WorkArtifact } from "@/openwork/artifact-verifier"
 import type { WorkSpec } from "@/openwork/work-spec"
+import type { ServerScope } from "@/utils/server-scope"
 
 const TASK_LIMIT = 200
 
@@ -31,7 +32,7 @@ export const { use: useOpenWorkTasks, provider: OpenWorkTasksProvider } = create
       createStore<{ items: Record<string, WorkTask> }>({ items: {} }),
     )
 
-    const get = (scope: string, sessionID: string) => store.items[workTaskKey(scope, sessionID)]
+    const get = (scope: ServerScope, sessionID: string) => store.items[workTaskKey(scope, sessionID)]
     const replace = (task: WorkTask) => setStore("items", workTaskKey(task.scope, task.sessionID), reconcile(task))
 
     const prune = () => {
@@ -55,7 +56,7 @@ export const { use: useOpenWorkTasks, provider: OpenWorkTasksProvider } = create
       ready,
       items: store.items,
       get,
-      create(input: { scope: string; sessionID: string; directory: string; spec: WorkSpec }) {
+      create(input: { scope: ServerScope; sessionID: string; directory: string; spec: WorkSpec }) {
         const current = get(input.scope, input.sessionID)
         if (current) return current
         const task = createWorkTask({ ...input, at: Date.now(), activityID: uuid() })
@@ -64,7 +65,7 @@ export const { use: useOpenWorkTasks, provider: OpenWorkTasksProvider } = create
         return task
       },
       transition(
-        scope: string,
+        scope: ServerScope,
         sessionID: string,
         status: WorkTaskStatus,
         options?: { detail?: string; resumed?: boolean },
@@ -79,7 +80,7 @@ export const { use: useOpenWorkTasks, provider: OpenWorkTasksProvider } = create
         if (next !== current) replace(next)
         return next
       },
-      checkpoint(scope: string, sessionID: string, input: { label: string; messageID?: string }) {
+      checkpoint(scope: ServerScope, sessionID: string, input: { label: string; messageID?: string }) {
         const current = get(scope, sessionID)
         if (!current) return
         const next = addWorkCheckpoint(current, {
@@ -91,21 +92,21 @@ export const { use: useOpenWorkTasks, provider: OpenWorkTasksProvider } = create
         replace(next)
         return next
       },
-      setContext(scope: string, sessionID: string, context: ContextGraph) {
+      setContext(scope: ServerScope, sessionID: string, context: ContextGraph) {
         const current = get(scope, sessionID)
         if (!current) return
         const next = setWorkTaskContext(current, context, Date.now())
         replace(next)
         return next
       },
-      setArtifacts(scope: string, sessionID: string, artifacts: WorkArtifact[], at = Date.now()) {
+      setArtifacts(scope: ServerScope, sessionID: string, artifacts: WorkArtifact[], at = Date.now()) {
         const current = get(scope, sessionID)
         if (!current) return
         const next = setWorkTaskArtifacts(current, artifacts, at)
         replace(next)
         return next
       },
-      remove(scope: string, sessionID: string) {
+      remove(scope: ServerScope, sessionID: string) {
         const key = workTaskKey(scope, sessionID)
         if (!store.items[key]) return
         setStore(

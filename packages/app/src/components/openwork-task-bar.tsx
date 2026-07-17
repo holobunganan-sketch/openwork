@@ -5,13 +5,14 @@ import type { ContextSourceProvenance } from "@/openwork/context-graph"
 import { normalizeWorkSpec } from "@/openwork/work-spec"
 import type { WorkPermissions } from "@/openwork/work-permissions"
 import type { WorkSkillPhase } from "@/openwork/work-skill-router"
+import type { ServerScope } from "@/utils/server-scope"
 import type { WorkArtifactKind, WorkVerificationCheckID, WorkVerificationStatus } from "@/openwork/artifact-verifier"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Icon } from "@opencode-ai/ui/v2/icon"
 import { createMemo, createSignal, For, Show } from "solid-js"
 
 export function OpenWorkTaskBar(props: {
-  scope: string
+  scope: ServerScope
   sessionID: string
   working: boolean
   blocked: boolean

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test"
-import { createOpenWorkMemoryEntry, exportOpenWorkMemory, formatWorkMemoryContext, memoryForTask } from "./memory"
+import {
+  createOpenWorkMemoryEntry,
+  exportOpenWorkMemory,
+  formatWorkMemoryContext,
+  memoryForTask,
+  migrateOpenWorkMemoryStore,
+} from "./memory"
 
 const entry = (input: { id: string; scope: "user" | "project"; project?: string; at: number; enabled?: boolean }) => ({
   ...createOpenWorkMemoryEntry({ ...input, content: `memory ${input.id}` }),
@@ -30,5 +36,33 @@ describe("OpenWork scoped memory", () => {
     const parsed = JSON.parse(exportOpenWorkMemory([entry({ id: "one", scope: "user", at: 1 })]))
     expect(parsed.version).toBe(1)
     expect(parsed.entries[0].id).toBe("one")
+  })
+
+  test("migrates old memory, normalizes Windows paths, and drops malformed entries", () => {
+    const migrated = migrateOpenWorkMemoryStore({
+      entries: [
+        {
+          id: "project",
+          scope: "project",
+          project: "C:\\Work\\OpenWork\\",
+          content: "  Keep the release notes concise.  ",
+          enabled: false,
+          createdAt: 10,
+          updatedAt: 20,
+        },
+        { id: "broken", scope: "project", content: "No path" },
+        { scope: "user", content: "No id" },
+      ],
+    })
+
+    expect(migrated.entries).toHaveLength(1)
+    expect(migrated.entries[0]).toMatchObject({
+      id: "project",
+      project: "c:/work/openwork",
+      content: "Keep the release notes concise.",
+      enabled: false,
+      createdAt: 10,
+      updatedAt: 20,
+    })
   })
 })

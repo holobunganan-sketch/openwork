@@ -115,7 +115,7 @@ export function OpenWorkTaskBar(props: {
                   </ButtonV2>
                 </div>
                 <ul class="m-0 space-y-1.5 p-0">
-                  <For each={current.spec.acceptanceCriteria}>
+                  <For each={spec()?.acceptanceCriteria ?? []}>
                     {(criterion) => (
                       <li class="flex items-start gap-2 text-[11px] leading-4 text-v2-text-text-base">
                         <span class="mt-1 size-1.5 shrink-0 rounded-full border border-v2-border-border-strong" />
@@ -124,6 +124,21 @@ export function OpenWorkTaskBar(props: {
                     )}
                   </For>
                 </ul>
+                <Show when={spec()?.constraints.length}>
+                  <div class="mb-1 mt-3 text-[10px] text-v2-text-text-muted [font-weight:600]">
+                    {language.t("openwork.task.constraints")}
+                  </div>
+                  <ul class="m-0 space-y-1 p-0">
+                    <For each={spec()?.constraints ?? []}>
+                      {(constraint) => (
+                        <li class="flex items-start gap-1.5 text-[10px] leading-4 text-v2-text-text-base">
+                          <span class="mt-1.5 size-1 shrink-0 rounded-full bg-v2-icon-icon-muted" />
+                          <span>{constraint}</span>
+                        </li>
+                      )}
+                    </For>
+                  </ul>
+                </Show>
                 <Show when={current.checkpoints.length}>
                   <div class="mt-3 space-y-1">
                     <For each={current.checkpoints.slice().reverse()}>

@@ -16,6 +16,8 @@ export const MEMORY_CONTENT_LIMIT = 2_000
 export const MEMORY_ENTRY_LIMIT = 200
 export const MEMORY_TASK_LIMIT = 20
 
+export type OpenWorkMemoryStore = { entries: OpenWorkMemoryEntry[] }
+
 export function normalizeMemoryContent(content: string) {
   return content.trim().slice(0, MEMORY_CONTENT_LIMIT)
 }
@@ -76,4 +78,39 @@ export function formatWorkMemoryContext(entries: OpenWorkMemoryEntry[]) {
 
 export function exportOpenWorkMemory(entries: OpenWorkMemoryEntry[]) {
   return JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), entries }, null, 2)
+}
+
+export function migrateOpenWorkMemoryStore(value: unknown): OpenWorkMemoryStore {
+  if (!isRecord(value) || !Array.isArray(value.entries)) return { entries: [] }
+  const entries = value.entries
+    .flatMap((item) => {
+      if (!isRecord(item) || typeof item.id !== "string" || typeof item.content !== "string") return []
+      if (item.scope !== "user" && item.scope !== "project") return []
+      const createdAt = finiteNumber(item.createdAt) ?? finiteNumber(item.updatedAt) ?? 0
+      const updatedAt = finiteNumber(item.updatedAt) ?? createdAt
+      try {
+        const entry = createOpenWorkMemoryEntry({
+          id: item.id,
+          scope: item.scope,
+          project: typeof item.project === "string" ? item.project : undefined,
+          content: item.content,
+          source: item.source === "correction" ? "correction" : "user",
+          at: updatedAt,
+        })
+        return [{ ...entry, enabled: item.enabled !== false, createdAt, updatedAt }]
+      } catch {
+        return []
+      }
+    })
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, MEMORY_ENTRY_LIMIT)
+  return { entries }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function finiteNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
 }

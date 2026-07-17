@@ -433,14 +433,18 @@ function assertManagedID(id: string) {
 }
 
 async function validateExtractedTree(root: string) {
+  await validateExtractedEntries(root)
+  const manifest = await lstat(join(root, "SKILL.md"))
+  if (!manifest.isFile() || manifest.isSymbolicLink()) throw new Error("Extracted skill is missing SKILL.md")
+}
+
+async function validateExtractedEntries(root: string) {
   for (const entry of await readdir(root, { withFileTypes: true })) {
     const path = join(root, entry.name)
     if (entry.isSymbolicLink()) throw new Error(`Extracted skill contains a symbolic link: ${path}`)
-    if (entry.isDirectory()) await validateExtractedTree(path)
+    if (entry.isDirectory()) await validateExtractedEntries(path)
     else if (!entry.isFile()) throw new Error(`Extracted skill contains an unsupported file: ${path}`)
   }
-  const manifest = await lstat(join(root, "SKILL.md"))
-  if (!manifest.isFile() || manifest.isSymbolicLink()) throw new Error("Extracted skill is missing SKILL.md")
 }
 
 async function collectFiles(root: string, current = root): Promise<Array<{ path: string; relative: string }>> {

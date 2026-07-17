@@ -69,7 +69,10 @@ export function OpenWorkTaskBar(props: {
   return (
     <Show when={task()} keyed>
       {(current) => (
-        <div class="shrink-0 border-b border-v2-border-border-muted bg-v2-background-bg-layer-01">
+        <div
+          data-component="openwork-task-workbench"
+          class="shrink-0 border-b border-v2-border-border-muted bg-v2-background-bg-layer-01"
+        >
           <div class="flex min-h-10 items-center gap-2 px-3 py-1.5">
             <span class={`size-2 shrink-0 rounded-full ${statusColor(status() ?? "draft")}`} aria-hidden="true" />
             <span class="shrink-0 text-[11px] text-v2-text-text-base [font-weight:600]">
@@ -81,6 +84,26 @@ export function OpenWorkTaskBar(props: {
             <span class="hidden shrink-0 rounded-full bg-v2-background-bg-layer-03 px-2 py-0.5 text-[10px] text-v2-text-text-muted sm:inline">
               {language.t(`openwork.autonomy.${current.spec.autonomy}`)}
             </span>
+            <span
+              class="hidden min-w-0 max-w-[180px] items-center gap-1 rounded-full bg-v2-background-bg-layer-03 px-2 py-0.5 text-[10px] text-v2-text-text-muted lg:flex"
+              title={current.directory}
+            >
+              <Icon name="folder" size="small" class="shrink-0" />
+              <span class="truncate">{current.directory}</span>
+            </span>
+            <Show when={spec()?.model}>
+              {(model) => (
+                <span
+                  class="hidden min-w-0 max-w-[150px] items-center gap-1 rounded-full bg-v2-background-bg-layer-03 px-2 py-0.5 text-[10px] text-v2-text-text-muted md:flex"
+                  title={`${model().providerID}/${model().modelID}`}
+                >
+                  <span class="truncate">{model().name ?? model().modelID}</span>
+                  <Show when={model().variant}>
+                    {(variant) => <span class="shrink-0 opacity-70">· {variant()}</span>}
+                  </Show>
+                </span>
+              )}
+            </Show>
             <Show
               when={props.working}
               fallback={

@@ -32,10 +32,11 @@ describe("OpenWork skills", () => {
       new BlobReader(new Blob(["---\nname: Report Helper\ndescription: Draft reports\n---\n# Report Helper\n"])),
     )
     await writer.add("report-helper/reference.md", new BlobReader(new Blob(["reference"])))
+    await writer.add("report-helper/agents/reviewer.md", new BlobReader(new Blob(["nested helper"])))
     const zip = new Uint8Array(await (await writer.close()).arrayBuffer())
 
     const preview = await manager.previewZip(zip)
-    expect(preview).toMatchObject({ id: "report-helper", fileCount: 2, replacesExisting: false })
+    expect(preview).toMatchObject({ id: "report-helper", fileCount: 3, replacesExisting: false })
     const installed = await manager.installZip(zip)
     expect(installed.skill.id).toBe("report-helper")
     expect(installed.skill.installed).toBe(true)
@@ -47,6 +48,9 @@ describe("OpenWork skills", () => {
     const exported = await manager.exportZip("report-helper")
     expect(exported.byteLength).toBeGreaterThan(0)
     expect(await readFile(join(root, "config", "skills", "report-helper", "reference.md"), "utf8")).toBe("reference")
+    expect(await readFile(join(root, "config", "skills", "report-helper", "agents", "reviewer.md"), "utf8")).toBe(
+      "nested helper",
+    )
 
     await manager.setEnabled("report-helper", false)
     expect((await manager.list())[0]?.enabled).toBe(false)

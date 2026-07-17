@@ -4,7 +4,8 @@ import { expectAppVisible } from "../utils/waits"
 
 const directory = "C:/OpenWork/HarnessQuality"
 
-async function openHarness(page: Page) {
+async function openHarness(page: Page, options?: { onPrompt?: (body: unknown) => void }) {
+  const sessions: ({ id: string } & Record<string, unknown>)[] = []
   await mockOpenCodeServer(page, {
     directory,
     project: {
@@ -15,8 +16,39 @@ async function openHarness(page: Page) {
       time: { created: 1_700_000_000_000, updated: 1_700_000_000_000 },
       sandboxes: [],
     },
-    provider: { all: [], connected: [], default: {} },
-    sessions: [],
+    provider: {
+      all: [
+        {
+          id: "opencode-go",
+          name: "OpenCode Go",
+          models: {
+            "gpt-5": {
+              id: "gpt-5",
+              name: "GPT-5",
+              release_date: "2026-01-01",
+              limit: { context: 200_000 },
+            },
+          },
+        },
+      ],
+      connected: ["opencode-go"],
+      default: { providerID: "opencode-go", modelID: "gpt-5" },
+    },
+    sessions,
+    createSession: () => {
+      const session = {
+        id: "session_openwork_harness",
+        slug: "openwork-harness",
+        projectID: "project_harness_quality",
+        directory,
+        title: "OpenWork harness task",
+        version: "dev",
+        time: { created: Date.now(), updated: Date.now() },
+      }
+      sessions.push(session)
+      return session
+    },
+    onPrompt: ({ body }) => options?.onPrompt?.(body),
     pageMessages: () => ({ items: [] }),
   })
   await page.addInitScript((workspace) => {
@@ -110,6 +142,32 @@ test("keeps the task composer stable at a narrow viewport", async ({ page }, tes
   expect(composerBox.x + composerBox.width).toBeLessThanOrEqual(390)
   await expectNoHorizontalOverflow(page)
   await attachScreenshot(page, testInfo, "openwork-task-harness-narrow")
+})
+
+test("starts the selected workspace and model in one task-first flow", async ({ page }, testInfo) => {
+  const prompts: unknown[] = []
+  await openHarness(page, { onPrompt: (body) => prompts.push(body) })
+  const launchpad = page.locator('[data-component="openwork-launchpad"]')
+  const workspace = launchpad.locator('[data-action="openwork-workspace"]')
+  const model = launchpad.locator('[data-action="openwork-model"]')
+
+  await expect(workspace).toContainText("harness-quality")
+  await expect(model).toContainText("GPT-5")
+  await launchpad.getByRole("textbox", { name: /Describe what you want to accomplish/i }).fill("Inspect this project")
+  const start = launchpad.getByRole("button", { name: "Start task" })
+  await expect(start).toBeEnabled()
+  await start.click()
+
+  await expect(page).toHaveURL(/\/session\/session_openwork_harness/)
+  const workbench = page.locator('[data-component="openwork-task-workbench"]')
+  await expectAppVisible(workbench)
+  await expect(workbench).toContainText("Inspect this project")
+  await expect(workbench).toContainText("GPT-5")
+  await expect.poll(() => prompts.length).toBe(1)
+  expect(JSON.stringify(prompts[0])).toContain("C:/OpenWork/HarnessQuality")
+  expect(JSON.stringify(prompts[0])).toContain("GPT-5")
+  await expect(page.locator('[data-component="openwork-task-starting"]')).toHaveCount(0)
+  await attachScreenshot(page, testInfo, "openwork-task-running")
 })
 
 test("keeps memory visible, scoped, optional, and deliberately removable", async ({ page }, testInfo) => {

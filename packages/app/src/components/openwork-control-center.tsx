@@ -2,29 +2,128 @@ import type { OpenWorkMcpServer, OpenWorkSkill, OpenWorkSkillZipPreview, OpenWor
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useOpenWorkMemory } from "@/context/openwork-memory"
-import { createWorkSpec, type WorkAutonomy, type WorkKind, type WorkSpec } from "@/openwork/work-spec"
+import { useModels } from "@/context/models"
+import type { ModelKey, ModelSelection } from "@/context/local"
+import {
+  createWorkSpec,
+  type WorkAutonomy,
+  type WorkKind,
+  type WorkModel,
+  type WorkSpec,
+} from "@/openwork/work-spec"
 import { defaultWorkPermissions, type WorkPermissions } from "@/openwork/work-permissions"
 import { MEMORY_CONTENT_LIMIT, type OpenWorkMemoryEntry, type OpenWorkMemoryScope } from "@/openwork/memory"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Icon } from "@opencode-ai/ui/v2/icon"
 import { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
 import { TextareaV2 } from "@opencode-ai/ui/v2/textarea-v2"
+import { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
+import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
+import { ModelSelectorPopoverV2 } from "@/components/dialog-select-model"
+import { useSettingsDialog } from "@/components/settings-dialog"
 import { createEffect, createMemo, For, onMount, Show, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 
-export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec: WorkSpec) => void }) {
+export type OpenWorkWorkspaceOption = { directory: string; label: string }
+
+export function OpenWorkLaunchpad(props: {
+  disabled: boolean
+  workspace?: OpenWorkWorkspaceOption
+  workspaces: OpenWorkWorkspaceOption[]
+  onWorkspaceSelect: (directory: string) => void
+  onWorkspaceBrowse: () => void
+  onTask: (workSpec: WorkSpec) => void
+}) {
   const language = useLanguage()
+  const models = useModels()
+  const openModels = useSettingsDialog("models")
   const [state, setState] = createStore<{
     prompt: string
     kind?: WorkKind
     autonomy: WorkAutonomy
     permissions: WorkPermissions
     controls: boolean
+    model?: ModelKey
+    variant?: string
   }>({
     prompt: "",
     autonomy: "collaborate",
     permissions: defaultWorkPermissions("collaborate"),
     controls: false,
+  })
+  const availableModels = createMemo(() =>
+    models.list().filter((model) => models.visible({ providerID: model.provider.id, modelID: model.id })),
+  )
+  const currentModel = () => {
+    const selected = state.model
+    if (!selected) return undefined
+    return models.find(selected)
+  }
+  const recentModels = createMemo(() =>
+    models
+      .recent.list()
+      .map(models.find)
+      .filter((model): model is NonNullable<ReturnType<typeof models.find>> => !!model),
+  )
+  const modelSelection = {
+    ready: models.ready,
+    current: currentModel,
+    recent: recentModels,
+    list: models.list,
+    cycle(direction: 1 | -1) {
+      const items = recentModels()
+      const current = currentModel()
+      if (!current || items.length === 0) return
+      const index = items.findIndex((item) => item.provider.id === current.provider.id && item.id === current.id)
+      const next = items[(Math.max(index, 0) + direction + items.length) % items.length]
+      if (next) this.set({ providerID: next.provider.id, modelID: next.id })
+    },
+    set(item: ModelKey | undefined, options?: { recent?: boolean }) {
+      setState({ model: item ? { providerID: item.providerID, modelID: item.modelID } : undefined, variant: undefined })
+      if (!item) return
+      models.setVisibility(item, true)
+      if (options?.recent) models.recent.push(item)
+    },
+    visible: models.visible,
+    setVisibility: models.setVisibility,
+    variant: {
+      configured: () => undefined,
+      selected: () => state.variant,
+      current() {
+        const selected = state.variant
+        if (selected && this.list().includes(selected)) return selected
+        const model = currentModel()
+        if (!model) return undefined
+        const saved = models.variant.get({ providerID: model.provider.id, modelID: model.id })
+        if (saved && this.list().includes(saved)) return saved
+      },
+      list() {
+        return Object.keys(currentModel()?.variants ?? {})
+      },
+      set(value: string | undefined) {
+        setState("variant", value)
+        const model = currentModel()
+        if (model) models.variant.set({ providerID: model.provider.id, modelID: model.id }, value)
+      },
+      cycle() {
+        const items = this.list()
+        if (items.length === 0) return
+        const current = this.current()
+        const index = current ? items.indexOf(current) : -1
+        this.set(items[(index + 1) % items.length])
+      },
+    },
+  } satisfies ModelSelection
+
+  createEffect(() => {
+    const current = currentModel()
+    if (current && availableModels().some((item) => item.provider.id === current.provider.id && item.id === current.id))
+      return
+    const recent = recentModels().find((item) =>
+      availableModels().some((model) => model.provider.id === item.provider.id && model.id === item.id),
+    )
+    const next = recent ?? availableModels()[0]
+    modelSelection.set(next ? { providerID: next.provider.id, modelID: next.id } : undefined)
   })
   const tasks = createMemo(() => [
     {
@@ -103,11 +202,25 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
       kind: state.kind,
       autonomy: state.autonomy,
       permissions: state.permissions,
+      workspace: props.workspace?.directory,
+      model: selectedWorkModel(),
     }),
   )
 
+  function selectedWorkModel(): WorkModel | undefined {
+    const model = currentModel()
+    if (!model) return undefined
+    const variant = modelSelection.variant.current()
+    return {
+      providerID: model.provider.id,
+      modelID: model.id,
+      name: model.name,
+      ...(variant ? { variant } : {}),
+    }
+  }
+
   function start() {
-    if (props.disabled || !state.prompt.trim()) return
+    if (props.disabled || !state.prompt.trim() || !props.workspace || !currentModel()) return
     props.onTask(workSpec())
   }
 
@@ -144,6 +257,110 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
               start()
             }}
           />
+          <div
+            class="flex min-w-0 flex-wrap items-center gap-1 border-t border-v2-border-border-muted px-1 py-1.5"
+            role="group"
+            aria-label={language.t("openwork.target.label")}
+          >
+            <MenuV2 placement="bottom-start" gutter={4}>
+              <MenuV2.Trigger
+                as={ButtonV2}
+                variant="ghost-muted"
+                size="normal"
+                class="min-w-0 max-w-[260px] justify-start ![font-weight:440]"
+                data-action="openwork-workspace"
+                aria-label={language.t("openwork.workspace.choose")}
+              >
+                <Icon name="folder" size="small" class="shrink-0" />
+                <span class="min-w-0 truncate">
+                  {props.workspace?.label ?? language.t("openwork.workspace.choose")}
+                </span>
+                <Icon name="chevron-down" size="small" class="-ml-0.5 -mr-1 shrink-0" />
+              </MenuV2.Trigger>
+              <MenuV2.Portal>
+                <MenuV2.Content class="min-w-[240px]">
+                  <MenuV2.Group>
+                    <MenuV2.GroupLabel>{language.t("openwork.workspace.label")}</MenuV2.GroupLabel>
+                    <For each={props.workspaces}>
+                      {(workspace) => (
+                        <MenuV2.Item
+                          data-selected-workspace={props.workspace?.directory === workspace.directory ? "" : undefined}
+                          onSelect={() => props.onWorkspaceSelect(workspace.directory)}
+                        >
+                          <Icon name="folder" size="small" />
+                          <span class="min-w-0 flex-1 truncate" title={workspace.directory}>
+                            {workspace.label}
+                          </span>
+                          <Show when={props.workspace?.directory === workspace.directory}>
+                            <Icon name="check" size="small" />
+                          </Show>
+                        </MenuV2.Item>
+                      )}
+                    </For>
+                  </MenuV2.Group>
+                  <MenuV2.Separator />
+                  <MenuV2.Item onSelect={props.onWorkspaceBrowse}>
+                    <Icon name="folder-add-left" size="small" />
+                    {language.t("openwork.workspace.browse")}
+                  </MenuV2.Item>
+                </MenuV2.Content>
+              </MenuV2.Portal>
+            </MenuV2>
+
+            <ModelSelectorPopoverV2
+              model={modelSelection}
+              onManage={openModels}
+              triggerAs={ButtonV2}
+              triggerProps={{
+                variant: "ghost-muted",
+                size: "normal",
+                class: "min-w-0 max-w-[260px] justify-start ![font-weight:440]",
+                "data-action": "openwork-model",
+                "aria-label": language.t("openwork.model.choose"),
+              }}
+            >
+              <Show
+                when={currentModel()}
+                fallback={<span class="truncate">{language.t("openwork.model.choose")}</span>}
+              >
+                {(model) => (
+                  <>
+                    <ProviderIcon id={model().provider.id} class="size-4 shrink-0 opacity-60" />
+                    <span class="min-w-0 truncate">{model().name}</span>
+                  </>
+                )}
+              </Show>
+              <Icon name="chevron-down" size="small" class="-ml-0.5 -mr-1 shrink-0" />
+            </ModelSelectorPopoverV2>
+
+            <Show when={modelSelection.variant.list().length > 0}>
+              <MenuV2 placement="bottom-start" gutter={4}>
+                <MenuV2.Trigger
+                  as={ButtonV2}
+                  variant="ghost-muted"
+                  size="normal"
+                  class="max-w-[150px] justify-start ![font-weight:440]"
+                  data-action="openwork-model-variant"
+                >
+                  <span class="truncate">{modelSelection.variant.current() ?? language.t("common.default")}</span>
+                  <Icon name="chevron-down" size="small" class="-ml-0.5 -mr-1 shrink-0" />
+                </MenuV2.Trigger>
+                <MenuV2.Portal>
+                  <MenuV2.Content>
+                    <MenuV2.RadioGroup
+                      value={modelSelection.variant.current() ?? "default"}
+                      onChange={(value) => modelSelection.variant.set(value === "default" ? undefined : value)}
+                    >
+                      <MenuV2.RadioItem value="default">{language.t("common.default")}</MenuV2.RadioItem>
+                      <For each={modelSelection.variant.list()}>
+                        {(variant) => <MenuV2.RadioItem value={variant}>{variant}</MenuV2.RadioItem>}
+                      </For>
+                    </MenuV2.RadioGroup>
+                  </MenuV2.Content>
+                </MenuV2.Portal>
+              </MenuV2>
+            </Show>
+          </div>
           <div class="flex flex-wrap items-center gap-2 border-t border-v2-border-border-muted px-1 pt-2">
             <div
               class="flex min-w-0 flex-1 items-center gap-1"
@@ -183,7 +400,7 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
             <ButtonV2
               variant="contrast"
               icon="arrow-up"
-              disabled={props.disabled || !state.prompt.trim()}
+              disabled={props.disabled || !state.prompt.trim() || !props.workspace || !currentModel()}
               onClick={start}
             >
               {language.t("openwork.composer.start")}
@@ -268,9 +485,15 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
             )}
           </For>
         </div>
-        <Show when={props.disabled}>
+        <Show when={props.disabled || !props.workspace || !currentModel()}>
           <p class="m-0 mt-3 text-center text-[12px] text-v2-text-text-muted">
-            {language.t("openwork.home.projectRequired")}
+            {language.t(
+              props.disabled
+                ? "openwork.home.projectRequired"
+                : !props.workspace
+                  ? "openwork.workspace.required"
+                  : "openwork.model.required",
+            )}
           </p>
         </Show>
       </div>

@@ -174,6 +174,9 @@ export interface PromptInputProps {
   onAbort?: () => void
   onSubmit?: () => void
   toolbar?: JSX.Element
+  autoSubmit?: boolean
+  onAutoSubmitStart?: () => void
+  onAutoSubmitSettled?: () => void
 }
 
 const EXAMPLES = [
@@ -1538,6 +1541,19 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     () => prompt.ready.promise,
     (p) => p,
   )
+  let autoSubmitStarted = false
+  createEffect(() => {
+    if (autoSubmitStarted || !props.autoSubmit) return
+    if (!prompt.ready() || props.controls.model.loading || !props.controls.model.selection.current()) return
+    if (!prompt.dirty()) return
+    autoSubmitStarted = true
+    props.onAutoSubmitStart?.()
+    queueMicrotask(() => {
+      void Promise.resolve(handleSubmit(new Event("submit", { cancelable: true }))).finally(() =>
+        props.onAutoSubmitSettled?.(),
+      )
+    })
+  })
 
   const designPlaceholder = () => {
     if (store.mode === "shell") return placeholder()

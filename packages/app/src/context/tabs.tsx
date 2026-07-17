@@ -29,6 +29,7 @@ export type DraftTab = {
   directory: string
   worktree?: string
   workSpec?: WorkSpec
+  autoStart?: boolean
 }
 
 export type Tab = SessionTab | DraftTab

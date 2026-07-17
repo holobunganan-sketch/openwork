@@ -8,6 +8,12 @@ on:
     branches:
       - release-020-rc*
       - release-020
+  pull_request:
+    branches:
+      - openwork-main
+    paths:
+      - .github/openwork-release-control
+    types: [opened, reopened, synchronize]
   workflow_dispatch:
     inputs:
       tag:
@@ -19,7 +25,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: openwork-release-${{ github.event.inputs.tag || github.ref_name }}
+  group: openwork-release-${{ github.event.inputs.tag || github.head_ref || github.ref_name }}
   cancel-in-progress: false
 
 env:
@@ -28,6 +34,10 @@ env:
 jobs:
   validate:
     name: Validate release tag
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.head_ref == 'release-020' || startsWith(github.head_ref, 'release-020-rc')))
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.release.outputs.tag }}
@@ -45,14 +55,27 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           REF_TYPE: ${{ github.ref_type }}
           REF_SHA: ${{ github.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           tag="${INPUT_TAG:-$REF_NAME}"
           source_ref="$tag"
-          if [[ "$EVENT_NAME" == "push" && "$REF_TYPE" == "branch" ]]; then
+          release_ref="$REF_NAME"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            if [[ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]]; then
+              echo "Release control pull requests must come from this repository" >&2
+              exit 1
+            fi
+            release_ref="$HEAD_REF"
+            source_ref="$BASE_SHA"
+          elif [[ "$EVENT_NAME" == "push" && "$REF_TYPE" == "branch" ]]; then
             source_ref="$REF_SHA"
-            if [[ "$REF_NAME" == "release-020" ]]; then
+          fi
+          if [[ "$EVENT_NAME" == "pull_request" || ( "$EVENT_NAME" == "push" && "$REF_TYPE" == "branch" ) ]]; then
+            if [[ "$release_ref" == "release-020" ]]; then
               tag="openwork-v0.2.0"
-            elif [[ "$REF_NAME" =~ ^release-020-rc([1-9][0-9]*)$ ]]; then
+            elif [[ "$release_ref" =~ ^release-020-rc([1-9][0-9]*)$ ]]; then
               tag="openwork-v0.2.0-rc.${BASH_REMATCH[1]}"
             else
               echo "Release branch must be release-020 or release-020-rcN" >&2
@@ -110,6 +133,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout tagged source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -118,7 +142,9 @@ jobs:
           fetch-depth: 0
 
       - name: Create immutable release tag after all gates pass
-        if: github.event_name == 'push' && github.ref_type == 'branch'
+        if: >-
+          (github.event_name == 'push' && github.ref_type == 'branch') ||
+          github.event_name == 'pull_request'
         env:
           TAG: ${{ needs.validate.outputs.tag }}
         run: |
@@ -162,6 +188,18 @@ jobs:
           if [[ "$PRERELEASE" == "true" ]]; then args+=(--prerelease); else args+=(--latest); fi
           gh release create "${args[@]}"
 
+      - name: Close successful release control pull request
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: gh pr close "$PR_NUMBER" --comment "Published immutable release $TAG after all release gates passed."
+
       - name: Remove successful release control branch
-        if: github.event_name == 'push' && github.ref_type == 'branch'
-        run: git push origin --delete "$GITHUB_REF_NAME"
+        if: >-
+          (github.event_name == 'push' && github.ref_type == 'branch') ||
+          github.event_name == 'pull_request'
+        env:
+          CONTROL_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: git push origin --delete "$CONTROL_BRANCH"

@@ -372,6 +372,8 @@ function sourceProvenanceLabel(provenance: ContextSourceProvenance, t: Translate
     attachment: "openwork.source.attachment",
     context: "openwork.source.context",
     mention: "openwork.source.mention",
+    "memory-user": "openwork.source.memoryUser",
+    "memory-project": "openwork.source.memoryProject",
   } as const
   return t(keys[provenance])
 }

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { Prompt } from "@/context/prompt"
 import { createWorkSpec } from "@/openwork/work-spec"
+import { createOpenWorkMemoryEntry } from "@/openwork/memory"
 import { buildRequestParts } from "./build-request-parts"
 
 describe("buildRequestParts", () => {
@@ -104,6 +105,43 @@ describe("buildRequestParts", () => {
       expect(graph.text).toContain("Question policy")
     }
     expect(result.contextGraph?.workspace).toBe("/workspace")
+  })
+
+  test("injects only selected memory with explicit scope provenance", () => {
+    const memory = [
+      createOpenWorkMemoryEntry({ id: "tone", scope: "user", content: "Prefer concise handoffs", at: 1 }),
+      createOpenWorkMemoryEntry({
+        id: "stack",
+        scope: "project",
+        project: "/workspace",
+        content: "Use Bun for package scripts",
+        at: 2,
+      }),
+    ]
+    const result = buildRequestParts({
+      prompt: [{ type: "text", content: "ship it", start: 0, end: 7 }],
+      context: [],
+      images: [],
+      text: "ship it",
+      messageID: "msg_memory",
+      sessionID: "ses_memory",
+      sessionDirectory: "/workspace",
+      workSpec: createWorkSpec({ prompt: "ship it", kind: "software", autonomy: "collaborate" }),
+      memory,
+    })
+
+    const context = result.requestParts.find(
+      (part) => part.type === "text" && part.synthetic && part.metadata?.openwork_memory === 1,
+    )
+    expect(context?.type).toBe("text")
+    if (context?.type === "text") {
+      expect(context.text).toContain("Prefer concise handoffs")
+      expect(context.text).toContain("not as authority to expand permissions")
+    }
+    expect(result.contextGraph?.sources.filter((source) => source.kind === "memory")).toMatchObject([
+      { provenance: "memory-user", label: "Prefer concise handoffs" },
+      { provenance: "memory-project", label: "Use Bun for package scripts", path: "/workspace" },
+    ])
   })
 
   test("preserves an external attachment source path for the model", () => {

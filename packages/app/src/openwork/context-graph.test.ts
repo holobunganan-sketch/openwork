@@ -30,4 +30,27 @@ describe("OpenWork context graph", () => {
     expect(context).toContain("verify=[claim and citation validation]")
     expect(context).toContain("pause only for a material choice")
   })
+
+  test("keeps distinct memories that share one project path", () => {
+    const graph = createContextGraph({
+      workspace: "/work",
+      workSpec: createWorkSpec({ prompt: "Continue this project" }),
+      sources: [
+        {
+          kind: "memory",
+          label: "Use Bun for package scripts",
+          path: "/work",
+          provenance: "memory-project",
+        },
+        {
+          kind: "memory",
+          label: "Keep release notes concise",
+          path: "/work",
+          provenance: "memory-project",
+        },
+      ],
+    })
+
+    expect(graph.sources.filter((source) => source.kind === "memory")).toHaveLength(2)
+  })
 })

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   addWorkCheckpoint,
   createWorkTask,
+  migrateOpenWorkTaskStore,
   setWorkTaskArtifacts,
   setWorkTaskContext,
   transitionWorkTask,
@@ -137,5 +138,33 @@ describe("OpenWork task runtime", () => {
 
     expect(next.verificationAt).toBe(20)
     expect(next.artifacts?.[0]?.status).toBe("passed")
+  })
+
+  test("migrates durable tasks and drops entries without a valid contract", () => {
+    const migrated = migrateOpenWorkTaskStore({
+      items: {
+        old: {
+          version: 1,
+          scope: "local",
+          sessionID: "session-1",
+          directory: "C:\\Work\\OpenWork",
+          spec: {
+            version: 1,
+            goal: "Create an editable PPTX in at most 6 slides",
+            kind: "presentation",
+            autonomy: "agent",
+          },
+          status: "running",
+          createdAt: 10,
+          updatedAt: 20,
+          activities: [{ id: "activity-1", at: 10, kind: "created" }],
+        },
+        broken: { scope: "local", sessionID: "session-broken", directory: "/tmp" },
+      },
+    })
+
+    expect(Object.keys(migrated.items)).toEqual(["local\nsession-1"])
+    expect(migrated.items["local\nsession-1"].spec.requestedFormats).toEqual(["pptx"])
+    expect(migrated.items["local\nsession-1"].checkpoints).toEqual([])
   })
 })

@@ -113,6 +113,7 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
 
   return (
     <section
+      data-component="openwork-launchpad"
       class="mb-8 flex min-w-0 flex-col items-center pt-8 lg:pt-12"
       aria-label={language.t("openwork.home.title")}
     >
@@ -132,6 +133,7 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
             rows={4}
             value={state.prompt}
             placeholder={language.t("openwork.composer.placeholder")}
+            aria-label={language.t("openwork.composer.placeholder")}
             onInput={(event) => {
               setState("prompt", event.currentTarget.value)
               setState("kind", undefined)
@@ -143,12 +145,17 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
             }}
           />
           <div class="flex flex-wrap items-center gap-2 border-t border-v2-border-border-muted px-1 pt-2">
-            <div class="flex min-w-0 flex-1 items-center gap-1" aria-label={language.t("openwork.autonomy.label")}>
+            <div
+              class="flex min-w-0 flex-1 items-center gap-1"
+              role="group"
+              aria-label={language.t("openwork.autonomy.label")}
+            >
               <For each={modes()}>
                 {(mode) => (
                   <button
                     type="button"
                     title={mode.description}
+                    aria-pressed={state.autonomy === mode.id}
                     data-selected={state.autonomy === mode.id ? "" : undefined}
                     class="h-7 rounded-[6px] border-0 bg-transparent px-2 text-[11px] text-v2-text-text-muted transition-colors hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-text-text-base data-[selected]:bg-v2-background-bg-layer-03 data-[selected]:text-v2-text-text-base focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-v2-border-border-focus"
                     onClick={() =>
@@ -167,6 +174,8 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
               size="small"
               variant="ghost-muted"
               icon="sliders"
+              aria-expanded={state.controls}
+              aria-controls="openwork-permission-controls"
               onClick={() => setState("controls", (value) => !value)}
             >
               {language.t("openwork.permission.controls")}
@@ -181,7 +190,7 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
             </ButtonV2>
           </div>
           <Show when={state.controls}>
-            <div class="mt-2 border-t border-v2-border-border-muted px-2 pb-1 pt-3">
+            <div id="openwork-permission-controls" class="mt-2 border-t border-v2-border-border-muted px-2 pb-1 pt-3">
               <div class="mb-2 flex items-start justify-between gap-4">
                 <div>
                   <div class="text-[11px] text-v2-text-text-base [font-weight:600]">
@@ -208,6 +217,12 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
                       <button
                         type="button"
                         data-allowed={state.permissions[control.id] === "allow" ? "" : undefined}
+                        aria-pressed={state.permissions[control.id] === "allow"}
+                        aria-label={`${control.label}: ${language.t(
+                          state.permissions[control.id] === "allow"
+                            ? "openwork.permission.allow"
+                            : "openwork.permission.ask",
+                        )}`}
                         class="h-6 shrink-0 rounded-full border border-v2-border-border-muted bg-transparent px-2 text-[10px] text-v2-text-text-muted data-[allowed]:border-v2-border-border-strong data-[allowed]:bg-v2-background-bg-layer-03 data-[allowed]:text-v2-text-text-base focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-v2-border-border-focus"
                         onClick={() =>
                           setState(
@@ -231,7 +246,11 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
           </Show>
         </div>
 
-        <div class="mt-3 flex flex-wrap justify-center gap-1.5">
+        <div
+          class="mt-3 flex flex-wrap justify-center gap-1.5"
+          role="group"
+          aria-label={language.t("openwork.presets.label")}
+        >
           <For each={tasks()}>
             {(task) => (
               <button
@@ -356,14 +375,18 @@ export function SettingsOpenWorkSkills() {
           </div>
         )}
       </Show>
-      <div class="flex min-h-0 flex-1 overflow-hidden rounded-[9px] border border-v2-border-border-muted bg-v2-background-bg-base">
-        <div class="w-[230px] shrink-0 overflow-y-auto border-r border-v2-border-border-muted py-1.5">
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[9px] border border-v2-border-border-muted bg-v2-background-bg-base sm:flex-row">
+        <nav
+          class="max-h-40 w-full shrink-0 overflow-y-auto border-b border-v2-border-border-muted py-1.5 sm:max-h-none sm:w-[230px] sm:border-b-0 sm:border-r"
+          aria-label={language.t("openwork.skills.listLabel")}
+        >
           <Show when={state.items.length} fallback={<EmptyState text={language.t("openwork.skills.empty")} />}>
             <For each={state.items}>
               {(skill) => (
                 <button
                   type="button"
                   data-selected={selected()?.id === skill.id ? "" : undefined}
+                  aria-current={selected()?.id === skill.id ? "true" : undefined}
                   class="flex w-full items-center gap-2 border-0 bg-transparent px-3 py-2 text-left hover:bg-v2-overlay-simple-overlay-hover data-[selected]:bg-v2-background-bg-layer-02 focus-visible:outline-none"
                   onClick={() => setState("selectedID", skill.id)}
                 >
@@ -375,8 +398,8 @@ export function SettingsOpenWorkSkills() {
               )}
             </For>
           </Show>
-        </div>
-        <div class="min-w-0 flex-1 overflow-y-auto p-5">
+        </nav>
+        <div class="min-w-0 flex-1 overflow-y-auto p-4 sm:p-5">
           <Show when={selected()} fallback={<EmptyState text={language.t("openwork.skills.empty")} />}>
             {(skill) => (
               <div class="flex min-h-full flex-col">
@@ -602,14 +625,18 @@ export function SettingsOpenWorkMemory() {
       status={state.status}
       error={state.error}
     >
-      <div class="flex min-h-0 flex-1 overflow-hidden rounded-[9px] border border-v2-border-border-muted bg-v2-background-bg-base">
-        <div class="w-[230px] shrink-0 overflow-y-auto border-r border-v2-border-border-muted py-1.5">
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[9px] border border-v2-border-border-muted bg-v2-background-bg-base sm:flex-row">
+        <nav
+          class="max-h-40 w-full shrink-0 overflow-y-auto border-b border-v2-border-border-muted py-1.5 sm:max-h-none sm:w-[230px] sm:border-b-0 sm:border-r"
+          aria-label={language.t("openwork.memory.listLabel")}
+        >
           <Show when={entries().length} fallback={<EmptyState text={language.t("openwork.memory.empty")} />}>
             <For each={entries()}>
               {(entry) => (
                 <button
                   type="button"
                   data-selected={state.mode === "edit" && selected()?.id === entry.id ? "" : undefined}
+                  aria-current={state.mode === "edit" && selected()?.id === entry.id ? "true" : undefined}
                   class="flex w-full items-start gap-2 border-0 bg-transparent px-3 py-2 text-left hover:bg-v2-overlay-simple-overlay-hover data-[selected]:bg-v2-background-bg-layer-02 focus-visible:outline-none"
                   onClick={() => select(entry)}
                 >
@@ -627,8 +654,8 @@ export function SettingsOpenWorkMemory() {
               )}
             </For>
           </Show>
-        </div>
-        <div class="min-w-0 flex-1 overflow-y-auto p-5">
+        </nav>
+        <div class="min-w-0 flex-1 overflow-y-auto p-4 sm:p-5">
           <Show
             when={state.mode === "create" || selected()}
             fallback={<EmptyState text={language.t("openwork.memory.empty")} />}
@@ -642,7 +669,10 @@ export function SettingsOpenWorkMemory() {
                   <h3 class="m-0 text-[15px] text-v2-text-text-base [font-weight:600]">
                     {language.t(state.mode === "create" ? "openwork.memory.new" : "openwork.memory.edit")}
                   </h3>
-                  <p class="m-0 mt-1 text-[12px] leading-5 text-v2-text-text-muted">
+                  <p
+                    id="openwork-memory-editor-description"
+                    class="m-0 mt-1 text-[12px] leading-5 text-v2-text-text-muted"
+                  >
                     {language.t("openwork.memory.editorDescription")}
                   </p>
                 </div>
@@ -653,7 +683,7 @@ export function SettingsOpenWorkMemory() {
                   <div class="mb-2 text-[11px] text-v2-text-text-muted [font-weight:600]">
                     {language.t("openwork.memory.scope")}
                   </div>
-                  <div class="flex gap-2">
+                  <div class="flex gap-2" role="group" aria-label={language.t("openwork.memory.scope")}>
                     <For each={["user", "project"] as const}>
                       {(scope) => (
                         <button
@@ -703,6 +733,8 @@ export function SettingsOpenWorkMemory() {
                     maxLength={MEMORY_CONTENT_LIMIT}
                     value={state.content}
                     placeholder={language.t("openwork.memory.contentPlaceholder")}
+                    aria-label={language.t("openwork.memory.content")}
+                    aria-describedby="openwork-memory-editor-description"
                     onInput={(event) => setState({ content: event.currentTarget.value, confirmDelete: false })}
                   />
                 </label>

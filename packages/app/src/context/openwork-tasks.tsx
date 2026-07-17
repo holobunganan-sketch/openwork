@@ -5,6 +5,7 @@ import { uuid } from "@/utils/uuid"
 import {
   addWorkCheckpoint,
   createWorkTask,
+  migrateOpenWorkTaskStore,
   setWorkTaskArtifacts,
   setWorkTaskContext,
   transitionWorkTask,
@@ -23,7 +24,10 @@ export const { use: useOpenWorkTasks, provider: OpenWorkTasksProvider } = create
   gate: false,
   init: () => {
     const [store, setStore, , ready] = persisted(
-      Persist.global("openwork.tasks", ["openwork.tasks.v1"]),
+      {
+        ...Persist.global("openwork.tasks", ["openwork.tasks.v1"]),
+        migrate: migrateOpenWorkTaskStore,
+      },
       createStore<{ items: Record<string, WorkTask> }>({ items: {} }),
     )
 

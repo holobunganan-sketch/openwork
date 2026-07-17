@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { createWorkSpec, formatWorkSpecContext } from "./work-spec"
+import { createWorkSpec, formatWorkSpecContext, migrateWorkSpec } from "./work-spec"
 
 describe("OpenWork task specification", () => {
   test.each([
@@ -31,5 +31,39 @@ describe("OpenWork task specification", () => {
     expect(context).toContain("verify=[slide rendering and overflow inspection]")
     expect(context).toContain("Do not claim completion without concrete evidence")
     expect(context).toContain("verify")
+  })
+
+  test("makes inferred formats and constraints visible to the harness", () => {
+    const spec = createWorkSpec({
+      prompt: "Make a board-ready editable PPTX by Monday in at most 8 slides",
+    })
+    const context = formatWorkSpecContext(spec)
+
+    expect(spec.kind).toBe("presentation")
+    expect(spec.requestedFormats).toEqual(["pptx"])
+    expect(spec.constraints).toEqual(
+      expect.arrayContaining(["Maximum 8 slides", "Audience: board members", "Deliverable remains editable"]),
+    )
+    expect(context).toContain("Requested formats: pptx")
+    expect(context).toContain("Explicit constraints: Maximum 8 slides")
+    expect(context).toContain("Intent inference: confidence=")
+  })
+
+  test("migrates an old task contract without losing user-authored fields", () => {
+    const migrated = migrateWorkSpec({
+      version: 1,
+      goal: "Analyze this table and return an editable XLSX",
+      kind: "data",
+      autonomy: "collaborate",
+      deliverables: ["My existing workbook"],
+      acceptanceCriteria: ["Totals reconcile"],
+      permissions: { read: "allow", workspace: "allow", commands: "ask" },
+    })
+
+    expect(migrated?.deliverables).toEqual(["My existing workbook"])
+    expect(migrated?.acceptanceCriteria).toEqual(["Totals reconcile"])
+    expect(migrated?.requestedFormats).toEqual(["xlsx"])
+    expect(migrated?.constraints).toContain("Deliverable remains editable")
+    expect(migrated?.permissions.destructive).toBe("ask")
   })
 })

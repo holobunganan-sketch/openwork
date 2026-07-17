@@ -1,7 +1,14 @@
 import { defaultWorkPermissions, type WorkPermissions } from "./work-permissions"
 import { routeWorkSkills, type WorkSkillRouteStep } from "./work-skill-router"
+import {
+  compileWorkIntent,
+  workOutputFormatLabel,
+  type WorkIntent,
+  type WorkKind,
+  type WorkOutputFormat,
+} from "./work-intent"
 
-export type WorkKind = "general" | "document" | "research" | "data" | "presentation" | "software"
+export type { WorkKind, WorkOutputFormat } from "./work-intent"
 
 export type WorkAutonomy = "plan" | "collaborate" | "agent"
 
@@ -12,35 +19,16 @@ export type WorkSpec = {
   autonomy: WorkAutonomy
   deliverables: string[]
   acceptanceCriteria: string[]
+  constraints: string[]
+  requestedFormats: WorkOutputFormat[]
+  intentConfidence: WorkIntent["confidence"]
+  intentEvidence: string[]
   assumptions: string[]
   skillHints: string[]
   skillRoute: WorkSkillRouteStep[]
   questionPolicy: "only-material"
   permissions: WorkPermissions
 }
-
-const kindRules: { kind: Exclude<WorkKind, "general">; patterns: RegExp[] }[] = [
-  {
-    kind: "presentation",
-    patterns: [/\bpptx?\b/i, /powerpoint/i, /slide deck/i, /presentation/i, /幻灯片/, /演示文稿/, /汇报PPT/i],
-  },
-  {
-    kind: "data",
-    patterns: [/\bxlsx?\b/i, /spreadsheet/i, /dataset/i, /data analysis/i, /数据分析/, /数据集/, /表格/],
-  },
-  {
-    kind: "research",
-    patterns: [/research/i, /literature/i, /evidence/i, /citation/i, /文献/, /检索/, /证据/, /研究主题/],
-  },
-  {
-    kind: "document",
-    patterns: [/\bdocx?\b/i, /document/i, /manuscript/i, /report/i, /文档/, /手稿/, /报告/, /论文/],
-  },
-  {
-    kind: "software",
-    patterns: [/\bcode\b/i, /software/i, /repository/i, /debug/i, /代码/, /软件/, /仓库/, /修复.*错误/],
-  },
-]
 
 const defaults: Record<WorkKind, { deliverables: string[]; acceptanceCriteria: string[] }> = {
   general: {
@@ -130,17 +118,29 @@ export function createWorkSpec(input: {
   permissions?: WorkPermissions
 }): WorkSpec {
   const goal = input.prompt.trim()
-  const kind =
-    input.kind ?? kindRules.find((rule) => rule.patterns.some((pattern) => pattern.test(goal)))?.kind ?? "general"
+  const intent = compileWorkIntent(goal)
+  const kind = input.kind ?? intent.kind
   const autonomy = input.autonomy ?? "collaborate"
   const skillRoute = routeWorkSkills(kind)
+  const deliverables = intent.requestedFormats.length
+    ? intent.requestedFormats.map(deliverableForFormat)
+    : defaults[kind].deliverables
+  const acceptanceCriteria = unique([
+    ...defaults[kind].acceptanceCriteria,
+    ...intent.requestedFormats.map((format) => `The ${workOutputFormatLabel(format)} opens successfully`),
+    ...intent.constraints.map((constraint) => `Requested constraint is satisfied: ${constraint}`),
+  ])
   return {
     version: 1,
     goal,
     kind,
     autonomy,
-    deliverables: defaults[kind].deliverables,
-    acceptanceCriteria: defaults[kind].acceptanceCriteria,
+    deliverables,
+    acceptanceCriteria,
+    constraints: intent.constraints,
+    requestedFormats: intent.requestedFormats,
+    intentConfidence: intent.confidence,
+    intentEvidence: intent.evidence,
     assumptions: harnessDefaults[kind].assumptions,
     skillHints: skillRoute.map((step) => step.capability),
     skillRoute,
@@ -150,16 +150,50 @@ export function createWorkSpec(input: {
 }
 
 export function normalizeWorkSpec(spec: WorkSpec): WorkSpec {
+  const intent = compileWorkIntent(spec.goal)
   const defaults = harnessDefaults[spec.kind]
   const skillRoute = spec.skillRoute ?? routeWorkSkills(spec.kind)
   return {
     ...spec,
+    constraints: spec.constraints ?? intent.constraints,
+    requestedFormats: spec.requestedFormats ?? intent.requestedFormats,
+    intentConfidence: spec.intentConfidence ?? intent.confidence,
+    intentEvidence: spec.intentEvidence ?? intent.evidence,
     assumptions: spec.assumptions ?? defaults.assumptions,
     skillHints: spec.skillHints ?? skillRoute.map((step) => step.capability),
     skillRoute,
     questionPolicy: spec.questionPolicy ?? "only-material",
     permissions: spec.permissions ?? defaultWorkPermissions(spec.autonomy),
   }
+}
+
+export function migrateWorkSpec(value: unknown): WorkSpec | undefined {
+  if (!isRecord(value) || typeof value.goal !== "string" || !value.goal.trim()) return undefined
+  const intent = compileWorkIntent(value.goal)
+  const kind = isWorkKind(value.kind) ? value.kind : intent.kind
+  const autonomy = isWorkAutonomy(value.autonomy) ? value.autonomy : "collaborate"
+  const base = createWorkSpec({
+    prompt: value.goal,
+    kind,
+    autonomy,
+    permissions: migratePermissions(value.permissions, autonomy),
+  })
+  const requestedFormats = stringArray(value.requestedFormats).filter(isWorkOutputFormat)
+  const confidence = value.intentConfidence
+  return normalizeWorkSpec({
+    ...base,
+    deliverables: stringArray(value.deliverables, base.deliverables),
+    acceptanceCriteria: stringArray(value.acceptanceCriteria, base.acceptanceCriteria),
+    constraints: stringArray(value.constraints, intent.constraints),
+    requestedFormats: requestedFormats.length ? requestedFormats : intent.requestedFormats,
+    intentConfidence:
+      confidence === "low" || confidence === "medium" || confidence === "high" ? confidence : intent.confidence,
+    intentEvidence: stringArray(value.intentEvidence, intent.evidence),
+    assumptions: stringArray(value.assumptions, base.assumptions),
+    skillHints: stringArray(value.skillHints, base.skillHints),
+    skillRoute: migrateWorkSkillRoute(value.skillRoute, base.skillRoute),
+    questionPolicy: "only-material",
+  })
 }
 
 export function formatWorkSpecContext(spec: WorkSpec) {
@@ -177,6 +211,9 @@ export function formatWorkSpecContext(spec: WorkSpec) {
     `Work type: ${spec.kind}`,
     `Execution mode: ${spec.autonomy}. ${autonomy}`,
     `Expected deliverables: ${spec.deliverables.join("; ")}`,
+    `Requested formats: ${spec.requestedFormats.length ? spec.requestedFormats.join("; ") : "none explicitly requested"}`,
+    `Explicit constraints: ${spec.constraints.length ? spec.constraints.join("; ") : "none supplied"}`,
+    `Intent inference: confidence=${spec.intentConfidence}; evidence=${spec.intentEvidence.join("; ") || "none"}`,
     `Acceptance criteria: ${spec.acceptanceCriteria.join("; ")}`,
     `Working assumptions: ${spec.assumptions.join("; ")}`,
     `Skill route: ${spec.skillRoute.map((step) => `${step.phase}=[${step.capability}]`).join(" -> ")}`,
@@ -189,3 +226,78 @@ export function formatWorkSpecContext(spec: WorkSpec) {
     "</openwork_task_contract>",
   ].join("\n")
 }
+
+function deliverableForFormat(format: WorkOutputFormat) {
+  const article = ["docx", "pptx", "xlsx", "html"].includes(format) ? "An" : "A"
+  return `${article} ${workOutputFormatLabel(format)}`
+}
+
+function unique(values: string[]) {
+  return [...new Set(values)]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function stringArray(value: unknown, fallback: string[] = []) {
+  if (!Array.isArray(value)) return fallback
+  const result = value.filter((item): item is string => typeof item === "string" && !!item.trim())
+  return result.length ? result : fallback
+}
+
+function isWorkKind(value: unknown): value is WorkKind {
+  return workKinds.has(value)
+}
+
+function isWorkAutonomy(value: unknown): value is WorkAutonomy {
+  return value === "plan" || value === "collaborate" || value === "agent"
+}
+
+function isWorkOutputFormat(value: string): value is WorkOutputFormat {
+  return workOutputFormats.has(value)
+}
+
+function migrateWorkSkillRoute(value: unknown, fallback: WorkSkillRouteStep[]) {
+  if (!Array.isArray(value)) return fallback
+  const result = value.flatMap((item) => {
+    if (!isRecord(item) || typeof item.id !== "string" || typeof item.capability !== "string") return []
+    if (!isWorkSkillPhase(item.phase) || typeof item.required !== "boolean") return []
+    return [{ id: item.id, phase: item.phase, capability: item.capability, required: item.required }]
+  })
+  return result.length ? result : fallback
+}
+
+function isWorkSkillPhase(value: unknown): value is WorkSkillRouteStep["phase"] {
+  return workSkillPhases.has(value)
+}
+
+function migratePermissions(value: unknown, autonomy: WorkAutonomy): WorkPermissions {
+  const base = defaultWorkPermissions(autonomy)
+  if (!isRecord(value)) return base
+  const decision = (key: Exclude<keyof WorkPermissions, "destructive">) =>
+    value[key] === "allow" || value[key] === "ask" ? value[key] : base[key]
+  return {
+    read: decision("read"),
+    workspace: decision("workspace"),
+    commands: decision("commands"),
+    network: decision("network"),
+    external: decision("external"),
+    destructive: "ask",
+  }
+}
+
+const workKinds = new Set<unknown>(["general", "document", "research", "data", "presentation", "software"])
+const workOutputFormats = new Set<unknown>([
+  "docx",
+  "pdf",
+  "markdown",
+  "pptx",
+  "xlsx",
+  "csv",
+  "json",
+  "html",
+  "zip",
+  "windows-installer",
+])
+const workSkillPhases = new Set<unknown>(["inspect", "create", "verify"])

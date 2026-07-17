@@ -6,6 +6,7 @@ import {
   createOpenWorkMemoryEntry,
   exportOpenWorkMemory,
   memoryForTask,
+  migrateOpenWorkMemoryStore,
   MEMORY_ENTRY_LIMIT,
   type OpenWorkMemoryEntry,
   type OpenWorkMemoryScope,
@@ -16,7 +17,10 @@ export const { use: useOpenWorkMemory, provider: OpenWorkMemoryProvider } = crea
   gate: false,
   init: () => {
     const [store, setStore, , ready] = persisted(
-      Persist.global("openwork.memory", ["openwork.memory.v1"]),
+      {
+        ...Persist.global("openwork.memory", ["openwork.memory.v1"]),
+        migrate: migrateOpenWorkMemoryStore,
+      },
       createStore<{ entries: OpenWorkMemoryEntry[] }>({ entries: [] }),
     )
 

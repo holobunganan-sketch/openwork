@@ -8,6 +8,8 @@ The task runtime also discovers deliverables from session diffs, patches, and to
 
 OpenWork memory is user-controlled rather than implicit chat-history accumulation. Users can create global or exact-project entries in Settings, edit or disable them, export the complete versioned JSON document, and permanently delete an entry through a confirmation step. Only enabled entries matching the active workspace are injected, their provenance remains visible in the Context Graph, and the memory policy cannot broaden task permissions or override current workspace evidence.
 
+Rough requests are now compiled outside the model prompt into a deterministic intent layer. It scores work type from English, Simplified Chinese, and Traditional Chinese signals; extracts requested file formats, audience, tone, language, size, timing, platform, editability, citation, data-preservation, and coexistence constraints; and makes the inference evidence visible in the durable WorkSpec. A versioned wish-prompt evaluation corpus requires every case to produce the expected intent, constraints, inspect/create/verify route, and acceptance contract. Persisted draft tabs, tasks, Context Graphs, artifacts, and scoped memory are validated and migrated before use. The task composer and memory/Skill settings expose explicit accessibility state, adapt to narrow layouts, and run through a production-build Playwright gate that checks accessible names, control state, horizontal overflow, geometry, and deliberate memory deletion.
+
 ## Product principles
 
 - The home screen starts work. Configuration belongs in Settings.

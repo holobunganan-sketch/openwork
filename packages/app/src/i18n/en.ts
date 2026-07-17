@@ -631,6 +631,7 @@ export const dict = {
   "home.providerTip": "Connect to 75+ providers to use other models, including Claude, GPT, Gemini, etc",
 
   "openwork.home.title": "What would you like to work on?",
+  "openwork.presets.label": "Task presets",
   "openwork.home.description": "Start with a practical task, or open a project for a development workflow.",
   "openwork.home.projectRequired": "Connect a server to start one of these tasks.",
   "openwork.composer.placeholder":
@@ -689,6 +690,7 @@ export const dict = {
   "openwork.tab.usage": "Go usage",
   "openwork.skills.description":
     "Install validated skill ZIPs, enable or disable managed skills, export them, and recover from automatic backups.",
+  "openwork.skills.listLabel": "Installed skills",
   "openwork.skills.install": "Install skill ZIP",
   "openwork.skills.choose": "Choose skill ZIP",
   "openwork.skills.install.success": "Skill installed. It is available to new sessions.",
@@ -738,6 +740,7 @@ export const dict = {
   "openwork.memory.edit": "Edit memory",
   "openwork.memory.editorDescription":
     "Enabled entries are added to matching task context but never expand permissions or override current evidence.",
+  "openwork.memory.listLabel": "Saved memory",
   "openwork.memory.export": "Export JSON",
   "openwork.memory.exported": "Memory exported.",
   "openwork.memory.empty": "No saved memory. Add only facts or preferences you want OpenWork to reuse.",
@@ -764,6 +767,7 @@ export const dict = {
   "openwork.task.activity": "Activity",
   "openwork.task.contract": "Task contract",
   "openwork.task.acceptance": "Acceptance criteria",
+  "openwork.task.constraints": "Explicit constraints",
   "openwork.task.context": "Context graph",
   "openwork.task.sources": "Sources",
   "openwork.task.assumptions": "Working assumptions",

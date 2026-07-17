@@ -3,6 +3,7 @@ import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useOpenWorkMemory } from "@/context/openwork-memory"
 import { useModels } from "@/context/models"
+import { useProviders } from "@/hooks/use-providers"
 import type { ModelKey, ModelSelection } from "@/context/local"
 import {
   createWorkSpec,
@@ -36,6 +37,7 @@ export function OpenWorkLaunchpad(props: {
 }) {
   const language = useLanguage()
   const models = useModels()
+  const providers = useProviders()
   const openModels = useSettingsDialog("models")
   const [state, setState] = createStore<{
     prompt: string
@@ -65,6 +67,15 @@ export function OpenWorkLaunchpad(props: {
       .map(models.find)
       .filter((model): model is NonNullable<ReturnType<typeof models.find>> => !!model),
   )
+  const defaultModel = createMemo(() => {
+    const defaults = providers.default()
+    for (const provider of providers.connected()) {
+      const modelID = defaults[provider.id] ?? Object.values(provider.models)[0]?.id
+      if (!modelID) continue
+      const model = models.find({ providerID: provider.id, modelID })
+      if (model) return model
+    }
+  })
   const modelSelection = {
     ready: models.ready,
     current: currentModel,
@@ -117,12 +128,8 @@ export function OpenWorkLaunchpad(props: {
 
   createEffect(() => {
     const current = currentModel()
-    if (current && availableModels().some((item) => item.provider.id === current.provider.id && item.id === current.id))
-      return
-    const recent = recentModels().find((item) =>
-      availableModels().some((model) => model.provider.id === item.provider.id && model.id === item.id),
-    )
-    const next = recent ?? availableModels()[0]
+    if (current) return
+    const next = recentModels()[0] ?? defaultModel() ?? availableModels()[0] ?? models.list()[0]
     modelSelection.set(next ? { providerID: next.provider.id, modelID: next.id } : undefined)
   })
   const tasks = createMemo(() => [

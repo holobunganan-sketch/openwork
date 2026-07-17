@@ -6,6 +6,8 @@ The implemented harness now persists a per-task Context Graph with source proven
 
 The task runtime also discovers deliverables from session diffs, patches, and tool attachments; persists them as reviewable artifacts; reads the actual files; and applies type-specific checks for document structure, editable and rendered presentations, spreadsheet structure and formulas, research citations, software tests/builds, and package smoke evidence. A task reaches Verified only when every discovered artifact has passing evidence.
 
+OpenWork memory is user-controlled rather than implicit chat-history accumulation. Users can create global or exact-project entries in Settings, edit or disable them, export the complete versioned JSON document, and permanently delete an entry through a confirmation step. Only enabled entries matching the active workspace are injected, their provenance remains visible in the Context Graph, and the memory policy cannot broaden task permissions or override current workspace evidence.
+
 ## Product principles
 
 - The home screen starts work. Configuration belongs in Settings.

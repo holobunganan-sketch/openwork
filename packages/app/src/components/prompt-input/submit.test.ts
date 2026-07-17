@@ -154,6 +154,10 @@ beforeAll(async () => {
     }),
   }))
 
+  mock.module("@/context/openwork-memory", () => ({
+    useOpenWorkMemory: () => ({ forTask: () => [] }),
+  }))
+
   mock.module("@/context/prompt", () => ({
     usePrompt: () => prompt,
   }))

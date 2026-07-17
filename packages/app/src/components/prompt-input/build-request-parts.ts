@@ -7,6 +7,7 @@ import { Identifier } from "@/utils/id"
 import { createCommentMetadata, formatCommentNote } from "@/utils/comment-note"
 import { formatWorkSpecContext, type WorkSpec } from "@/openwork/work-spec"
 import { createContextGraph, formatContextGraph, type ContextGraph } from "@/openwork/context-graph"
+import { formatWorkMemoryContext, type OpenWorkMemoryEntry } from "@/openwork/memory"
 
 type PromptRequestPart = (TextPartInput | FilePartInput | AgentPartInput) & { id: string }
 
@@ -30,6 +31,7 @@ export type BuildRequestPartsInput = {
   sessionID: string
   sessionDirectory: string
   workSpec?: WorkSpec
+  memory?: OpenWorkMemoryEntry[]
 }
 
 const absolute = (directory: string, path: string) => {
@@ -56,7 +58,7 @@ const isFileAttachment = (part: Prompt[number]): part is FileAttachmentPart => p
 const isAgentAttachment = (part: Prompt[number]): part is AgentPart => part.type === "agent"
 
 export function buildOpenWorkContextGraph(input: BuildRequestPartsInput): ContextGraph | undefined {
-  if (!input.workSpec) return
+  if (!input.workSpec) return undefined
   return createContextGraph({
     workspace: input.sessionDirectory,
     workSpec: input.workSpec,
@@ -83,6 +85,12 @@ export function buildOpenWorkContextGraph(input: BuildRequestPartsInput): Contex
         label: item.filename,
         path: item.sourcePath,
         provenance: "attachment" as const,
+      })),
+      ...(input.memory ?? []).map((entry) => ({
+        kind: "memory" as const,
+        label: entry.content,
+        path: entry.project,
+        provenance: entry.scope === "project" ? ("memory-project" as const) : ("memory-user" as const),
       })),
     ],
   })
@@ -263,7 +271,19 @@ export function buildRequestParts(input: BuildRequestPartsInput) {
       ]
     : []
 
-  requestParts.push(...contract, ...graph, ...files, ...context, ...agents, ...images)
+  const memory = input.memory?.length
+    ? [
+        {
+          id: Identifier.ascending("part"),
+          type: "text" as const,
+          text: formatWorkMemoryContext(input.memory),
+          synthetic: true,
+          metadata: { openwork_memory: 1 },
+        } satisfies PromptRequestPart,
+      ]
+    : []
+
+  requestParts.push(...contract, ...graph, ...memory, ...files, ...context, ...agents, ...images)
 
   return {
     requestParts,

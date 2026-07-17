@@ -1,10 +1,13 @@
 import type { OpenWorkMcpServer, OpenWorkSkill, OpenWorkSkillZipPreview, OpenWorkUsage } from "@/context/platform"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
+import { useOpenWorkMemory } from "@/context/openwork-memory"
 import { createWorkSpec, type WorkAutonomy, type WorkKind, type WorkSpec } from "@/openwork/work-spec"
 import { defaultWorkPermissions, type WorkPermissions } from "@/openwork/work-permissions"
+import { MEMORY_CONTENT_LIMIT, type OpenWorkMemoryEntry, type OpenWorkMemoryScope } from "@/openwork/memory"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Icon } from "@opencode-ai/ui/v2/icon"
+import { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
 import { TextareaV2 } from "@opencode-ai/ui/v2/textarea-v2"
 import { createEffect, createMemo, For, onMount, Show, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
@@ -453,6 +456,272 @@ export function SettingsOpenWorkSkills() {
                 </Show>
               </div>
             )}
+          </Show>
+        </div>
+      </div>
+    </OpenWorkSettingsPage>
+  )
+}
+
+export function SettingsOpenWorkMemory() {
+  const language = useLanguage()
+  const memory = useOpenWorkMemory()
+  const [state, setState] = createStore<{
+    mode: "edit" | "create"
+    selectedID: string
+    scope: OpenWorkMemoryScope
+    project: string
+    content: string
+    status: string
+    error: string
+    confirmDelete: boolean
+  }>({
+    mode: "edit",
+    selectedID: "",
+    scope: "user",
+    project: "",
+    content: "",
+    status: "",
+    error: "",
+    confirmDelete: false,
+  })
+  const entries = createMemo(() => memory.entries.slice().sort((a, b) => b.updatedAt - a.updatedAt))
+  const selected = createMemo(() => memory.get(state.selectedID))
+
+  function select(entry: OpenWorkMemoryEntry) {
+    setState({
+      mode: "edit",
+      selectedID: entry.id,
+      scope: entry.scope,
+      project: entry.project ?? "",
+      content: entry.content,
+      status: "",
+      error: "",
+      confirmDelete: false,
+    })
+  }
+
+  createEffect(() => {
+    if (state.mode === "create" || selected()) return
+    const first = entries()[0]
+    if (first) select(first)
+  })
+
+  function createNew() {
+    setState({
+      mode: "create",
+      selectedID: "",
+      scope: "user",
+      project: "",
+      content: "",
+      status: "",
+      error: "",
+      confirmDelete: false,
+    })
+  }
+
+  function save() {
+    setState({ status: "", error: "", confirmDelete: false })
+    if (!state.content.trim()) {
+      setState("error", language.t("openwork.memory.contentRequired"))
+      return
+    }
+    if (state.scope === "project" && !state.project.trim()) {
+      setState("error", language.t("openwork.memory.projectRequired"))
+      return
+    }
+
+    try {
+      if (state.mode === "create") {
+        select(
+          memory.create({
+            scope: state.scope,
+            project: state.scope === "project" ? state.project : undefined,
+            content: state.content,
+          }),
+        )
+      } else {
+        memory.update(state.selectedID, {
+          scope: state.scope,
+          project: state.scope === "project" ? state.project : undefined,
+          content: state.content,
+        })
+      }
+      setState("status", language.t("openwork.memory.saved"))
+    } catch (cause) {
+      setState("error", errorMessage(cause))
+    }
+  }
+
+  function toggle() {
+    const entry = selected()
+    if (!entry) return
+    memory.update(entry.id, { enabled: !entry.enabled })
+    setState({ status: language.t("openwork.memory.saved"), error: "", confirmDelete: false })
+  }
+
+  function remove() {
+    if (!state.confirmDelete) {
+      setState("confirmDelete", true)
+      return
+    }
+    if (!memory.remove(state.selectedID)) return
+    setState({
+      mode: "edit",
+      selectedID: "",
+      status: language.t("openwork.memory.deleted"),
+      error: "",
+      confirmDelete: false,
+    })
+  }
+
+  function exportMemory() {
+    const url = URL.createObjectURL(new Blob([memory.exportJSON()], { type: "application/json" }))
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `openwork-memory-${new Date().toISOString().slice(0, 10)}.json`
+    anchor.click()
+    queueMicrotask(() => URL.revokeObjectURL(url))
+    setState({ status: language.t("openwork.memory.exported"), error: "" })
+  }
+
+  return (
+    <OpenWorkSettingsPage
+      title={language.t("openwork.settings.memory.title")}
+      description={language.t("openwork.settings.memory.description")}
+      action={
+        <div class="flex gap-2">
+          <ButtonV2 disabled={!entries().length} onClick={exportMemory}>
+            {language.t("openwork.memory.export")}
+          </ButtonV2>
+          <ButtonV2 icon="plus" variant="contrast" onClick={createNew}>
+            {language.t("openwork.memory.new")}
+          </ButtonV2>
+        </div>
+      }
+      status={state.status}
+      error={state.error}
+    >
+      <div class="flex min-h-0 flex-1 overflow-hidden rounded-[9px] border border-v2-border-border-muted bg-v2-background-bg-base">
+        <div class="w-[230px] shrink-0 overflow-y-auto border-r border-v2-border-border-muted py-1.5">
+          <Show when={entries().length} fallback={<EmptyState text={language.t("openwork.memory.empty")} />}>
+            <For each={entries()}>
+              {(entry) => (
+                <button
+                  type="button"
+                  data-selected={state.mode === "edit" && selected()?.id === entry.id ? "" : undefined}
+                  class="flex w-full items-start gap-2 border-0 bg-transparent px-3 py-2 text-left hover:bg-v2-overlay-simple-overlay-hover data-[selected]:bg-v2-background-bg-layer-02 focus-visible:outline-none"
+                  onClick={() => select(entry)}
+                >
+                  <span
+                    class={`mt-1 size-2 shrink-0 rounded-full ${entry.enabled ? "bg-v2-state-fg-success" : "bg-v2-icon-icon-disabled"}`}
+                  />
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate text-[12px] text-v2-text-text-base">{entry.content}</span>
+                    <span class="mt-0.5 block truncate text-[10px] text-v2-text-text-muted">
+                      {language.t(`openwork.memory.scope.${entry.scope}`)}
+                      {entry.project ? ` · ${entry.project}` : ""}
+                    </span>
+                  </span>
+                </button>
+              )}
+            </For>
+          </Show>
+        </div>
+        <div class="min-w-0 flex-1 overflow-y-auto p-5">
+          <Show
+            when={state.mode === "create" || selected()}
+            fallback={<EmptyState text={language.t("openwork.memory.empty")} />}
+          >
+            <div class="flex min-h-full flex-col">
+              <div class="flex items-start gap-3">
+                <div class="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-v2-background-bg-layer-02">
+                  <Icon name="edit" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <h3 class="m-0 text-[15px] text-v2-text-text-base [font-weight:600]">
+                    {language.t(state.mode === "create" ? "openwork.memory.new" : "openwork.memory.edit")}
+                  </h3>
+                  <p class="m-0 mt-1 text-[12px] leading-5 text-v2-text-text-muted">
+                    {language.t("openwork.memory.editorDescription")}
+                  </p>
+                </div>
+              </div>
+
+              <div class="mt-6 space-y-5">
+                <div>
+                  <div class="mb-2 text-[11px] text-v2-text-text-muted [font-weight:600]">
+                    {language.t("openwork.memory.scope")}
+                  </div>
+                  <div class="flex gap-2">
+                    <For each={["user", "project"] as const}>
+                      {(scope) => (
+                        <button
+                          type="button"
+                          aria-pressed={state.scope === scope}
+                          data-selected={state.scope === scope ? "" : undefined}
+                          class="h-8 rounded-[6px] border border-v2-border-border-muted bg-transparent px-3 text-[11px] text-v2-text-text-muted data-[selected]:border-v2-border-border-strong data-[selected]:bg-v2-background-bg-layer-02 data-[selected]:text-v2-text-text-base focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-v2-border-border-focus"
+                          onClick={() => setState({ scope, confirmDelete: false })}
+                        >
+                          {language.t(`openwork.memory.scope.${scope}`)}
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </div>
+
+                <Show when={state.scope === "project"}>
+                  <label class="block">
+                    <span class="mb-2 block text-[11px] text-v2-text-text-muted [font-weight:600]">
+                      {language.t("openwork.memory.project")}
+                    </span>
+                    <TextInputV2
+                      type="text"
+                      appearance="base"
+                      value={state.project}
+                      placeholder={language.t("openwork.memory.projectPlaceholder")}
+                      spellcheck={false}
+                      autocorrect="off"
+                      autocomplete="off"
+                      autocapitalize="off"
+                      aria-label={language.t("openwork.memory.project")}
+                      onInput={(event) => setState({ project: event.currentTarget.value, confirmDelete: false })}
+                    />
+                  </label>
+                </Show>
+
+                <label class="block">
+                  <span class="mb-2 flex items-center justify-between text-[11px] text-v2-text-text-muted [font-weight:600]">
+                    <span>{language.t("openwork.memory.content")}</span>
+                    <span class="font-normal">
+                      {state.content.length} / {MEMORY_CONTENT_LIMIT}
+                    </span>
+                  </span>
+                  <TextareaV2
+                    class="!w-full [&_[data-slot=textarea-v2-textarea]]:min-h-40"
+                    rows={7}
+                    maxLength={MEMORY_CONTENT_LIMIT}
+                    value={state.content}
+                    placeholder={language.t("openwork.memory.contentPlaceholder")}
+                    onInput={(event) => setState({ content: event.currentTarget.value, confirmDelete: false })}
+                  />
+                </label>
+              </div>
+
+              <div class="mt-auto flex flex-wrap gap-2 border-t border-v2-border-border-muted pt-4">
+                <ButtonV2 variant="contrast" disabled={!state.content.trim()} onClick={save}>
+                  {language.t("openwork.memory.save")}
+                </ButtonV2>
+                <Show when={state.mode === "edit" && selected()}>
+                  <ButtonV2 onClick={toggle}>
+                    {language.t(selected()?.enabled ? "openwork.memory.disable" : "openwork.memory.enable")}
+                  </ButtonV2>
+                  <ButtonV2 class="ml-auto" variant="danger" onClick={remove}>
+                    {language.t(state.confirmDelete ? "openwork.memory.deleteConfirm" : "openwork.memory.delete")}
+                  </ButtonV2>
+                </Show>
+              </div>
+            </div>
           </Show>
         </div>
       </div>

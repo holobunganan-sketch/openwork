@@ -13,6 +13,7 @@ import { SettingsServersV2 } from "./servers"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import {
   SettingsOpenWorkMcp,
+  SettingsOpenWorkMemory,
   SettingsOpenWorkSkills,
   SettingsOpenWorkUsage,
 } from "@/components/openwork-control-center"
@@ -78,6 +79,10 @@ export const DialogSettings: Component<{
                 <div class="flex flex-col gap-1.5">
                   <TabsV2.SectionTitle>{language.t("settings.section.openwork")}</TabsV2.SectionTitle>
                   <div class="flex flex-col gap-1.5 w-full">
+                    <TabsV2.Trigger value="memory">
+                      <Icon name="edit" />
+                      {language.t("openwork.tab.memory")}
+                    </TabsV2.Trigger>
                     <TabsV2.Trigger value="skills">
                       <Icon name="archive" />
                       {language.t("openwork.tab.skills")}
@@ -114,6 +119,9 @@ export const DialogSettings: Component<{
         </TabsV2.Content>
         <TabsV2.Content value="models" class="settings-v2-panel">
           <SettingsModelsV2 />
+        </TabsV2.Content>
+        <TabsV2.Content value="memory" class="settings-v2-panel">
+          <SettingsOpenWorkMemory />
         </TabsV2.Content>
         <TabsV2.Content value="skills" class="settings-v2-panel">
           <SettingsOpenWorkSkills />

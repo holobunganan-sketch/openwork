@@ -22,6 +22,8 @@ import { ScopedKey } from "@/utils/server-scope"
 import { createPromptSubmissionState } from "./submission-state"
 import type { WorkSpec } from "@/openwork/work-spec"
 import { useOpenWorkTasks } from "@/context/openwork-tasks"
+import { useOpenWorkMemory } from "@/context/openwork-memory"
+import type { OpenWorkMemoryEntry } from "@/openwork/memory"
 
 type PendingPrompt = {
   abort: AbortController
@@ -39,6 +41,7 @@ export type FollowupDraft = {
   model: { providerID: string; modelID: string }
   variant?: string
   workSpec?: WorkSpec
+  memory?: OpenWorkMemoryEntry[]
 }
 
 type FollowupSendInput = {
@@ -116,6 +119,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
     messageID,
     sessionDirectory: input.draft.sessionDirectory,
     workSpec: input.draft.workSpec,
+    memory: input.draft.memory,
   })
 
   const message: Message = {
@@ -212,6 +216,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
   const [search] = useSearchParams<{ draftId?: string }>()
   const tabs = useTabs()
   const workTasks = useOpenWorkTasks()
+  const workMemory = useOpenWorkMemory()
   const pendingKey = (sessionID: string) => ScopedKey.from(sdk().scope, sessionID)
 
   const errorMessage = (err: unknown) => {
@@ -422,6 +427,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       model,
       variant,
       workSpec,
+      memory: workMemory.forTask(sessionDirectory),
     }
     const task = workTasks.get(sdk().scope, session.id)
 
@@ -521,6 +527,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       sessionID: session.id,
       sessionDirectory,
       workSpec,
+      memory: draft.memory,
     })
     if (task && contextGraph) workTasks.setContext(sdk().scope, session.id, contextGraph)
 

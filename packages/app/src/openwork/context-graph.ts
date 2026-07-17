@@ -1,8 +1,14 @@
 import { normalizeWorkSpec, type WorkSpec } from "./work-spec"
 import type { WorkSkillRouteStep } from "./work-skill-router"
 
-export type ContextSourceKind = "workspace" | "file" | "image" | "agent"
-export type ContextSourceProvenance = "workspace" | "attachment" | "context" | "mention"
+export type ContextSourceKind = "workspace" | "file" | "image" | "agent" | "memory"
+export type ContextSourceProvenance =
+  | "workspace"
+  | "attachment"
+  | "context"
+  | "mention"
+  | "memory-user"
+  | "memory-project"
 
 export type ContextSource = {
   id: string
@@ -40,7 +46,10 @@ export function createContextGraph(input: {
   ]
   const seen = new Set<string>()
   const sources = all.flatMap((source) => {
-    const key = `${source.kind}\n${source.path ?? source.label}`
+    const key =
+      source.kind === "memory"
+        ? `${source.kind}\n${source.provenance}\n${source.label}`
+        : `${source.kind}\n${source.path ?? source.label}`
     if (seen.has(key)) return []
     seen.add(key)
     return [{ ...source, id: `source-${seen.size}` }]
@@ -60,7 +69,10 @@ export function mergeContextGraphs(current: ContextGraph | undefined, next: Cont
   if (!current) return next
   const seen = new Set<string>()
   const sources = [...current.sources, ...next.sources].flatMap((source) => {
-    const key = `${source.kind}\n${source.path ?? source.label}`
+    const key =
+      source.kind === "memory"
+        ? `${source.kind}\n${source.provenance}\n${source.label}`
+        : `${source.kind}\n${source.path ?? source.label}`
     if (seen.has(key)) return []
     seen.add(key)
     return [{ ...source, id: `source-${seen.size}` }]

@@ -1,0 +1,139 @@
+name: OpenWork CI
+
+on:
+  pull_request:
+    branches: [openwork-main]
+  push:
+    branches: [openwork-main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Optional branch, tag, or SHA to validate
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      ref:
+        description: Optional branch, tag, or SHA to validate
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openwork-ci-${{ github.event.pull_request.number || inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  quality:
+    name: Lint, typecheck, and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.ref || github.event.inputs.ref || github.ref }}
+
+      - name: Setup Bun and dependencies
+        uses: ./.github/actions/setup-bun
+        with:
+          install-flags: --frozen-lockfile
+
+      - name: Lint
+        run: bun lint
+
+      - name: Typecheck
+        run: bun typecheck
+
+      - name: Desktop tests
+        working-directory: packages/desktop
+        run: bun test
+
+      - name: App unit tests
+        working-directory: packages/app
+        run: bun run test:unit
+
+  desktop-build:
+    name: Desktop build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.ref || github.event.inputs.ref || github.ref }}
+
+      - name: Setup Bun and dependencies
+        uses: ./.github/actions/setup-bun
+        with:
+          install-flags: --frozen-lockfile
+
+      - name: Build Desktop
+        working-directory: packages/desktop
+        run: bun run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          OPENCODE_CHANNEL: prod
+
+      - name: Upload Desktop build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: openwork-desktop-build
+          path: packages/desktop/out
+          if-no-files-found: error
+          retention-days: 7
+
+  windows-package:
+    name: Windows x64 package verification
+    runs-on: windows-2025
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.ref || github.event.inputs.ref || github.ref }}
+
+      - name: Setup Bun and dependencies
+        uses: ./.github/actions/setup-bun
+        with:
+          install-flags: --frozen-lockfile
+
+      - name: Build Desktop
+        working-directory: packages/desktop
+        run: bun run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          OPENCODE_CHANNEL: prod
+
+      - name: Package Windows x64
+        working-directory: packages/desktop
+        run: bun run package:win -- --x64 --publish never
+        env:
+          OPENCODE_CHANNEL: prod
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Verify installer exists
+        shell: pwsh
+        run: |
+          $assets = Get-ChildItem "packages/desktop/dist/*.exe" -ErrorAction SilentlyContinue
+          if (-not $assets) { throw "Windows installer was not produced" }
+          $assets | ForEach-Object { Write-Host "$($_.Name) $($_.Length) bytes" }
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: openwork-windows-x64
+          path: |
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.blockmap
+            packages/desktop/dist/latest*.yml
+          if-no-files-found: error
+          retention-days: 7

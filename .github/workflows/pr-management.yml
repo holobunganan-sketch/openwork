@@ -2,6 +2,7 @@ name: pr-management
 
 on:
   pull_request_target:
+    branches: [dev]
     types: [opened]
 
 jobs:

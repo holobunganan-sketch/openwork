@@ -1,0 +1,76 @@
+name: OpenWork sync upstream
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  prepare:
+    name: Create upstream sync branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      branch: ${{ steps.branch.outputs.name }}
+      upstream_sha: ${{ steps.merge.outputs.upstream_sha }}
+    steps:
+      - name: Checkout OpenWork product branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: openwork-main
+          fetch-depth: 0
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "OpenWork Upstream Sync"
+          git config user.email "actions@users.noreply.github.com"
+
+      - name: Name sync branch
+        id: branch
+        run: echo "name=sync/upstream-$(date -u +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch and merge anomalyco/opencode dev
+        id: merge
+        run: |
+          git remote add upstream https://github.com/anomalyco/opencode.git
+          git fetch --no-tags upstream dev
+          git switch -c "${{ steps.branch.outputs.name }}"
+          git merge --no-edit upstream/dev
+          echo "upstream_sha=$(git rev-parse upstream/dev)" >> "$GITHUB_OUTPUT"
+
+      - name: Push sync branch
+        run: git push --set-upstream origin "${{ steps.branch.outputs.name }}"
+
+  ci:
+    name: Validate merged branch
+    needs: prepare
+    uses: ./.github/workflows/openwork-ci.yml
+    with:
+      ref: ${{ needs.prepare.outputs.branch }}
+    permissions:
+      contents: read
+
+  pull-request:
+    name: Open manual-review pull request
+    needs: [prepare, ci]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ needs.prepare.outputs.branch }}
+          UPSTREAM_SHA: ${{ needs.prepare.outputs.upstream_sha }}
+        run: |
+          gh pr create \
+            --repo "${{ github.repository }}" \
+            --base openwork-main \
+            --head "$BRANCH" \
+            --title "chore(upstream): sync anomalyco/opencode dev" \
+            --body "Manual upstream synchronization through $UPSTREAM_SHA. OpenWork CI passed. This pull request must be reviewed and is never auto-merged."

@@ -1,0 +1,78 @@
+name: OpenWork project bootstrap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  tracker:
+    name: Create labels and issue tracker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create OpenWork labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          create_label() {
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/labels" \
+              -f "name=$1" -f "color=$2" -f "description=$3" >/dev/null 2>&1 || true
+          }
+
+          create_label openwork 5319e7 "OpenWork product work"
+          create_label desktop 0969da "Electron desktop application"
+          create_label skills 0e8a16 "Skill discovery and management"
+          create_label mcp 1d76db "Model Context Protocol"
+          create_label go-dashboard b60205 "OpenCode Go usage dashboard"
+          create_label windows 0078d4 "Windows packaging and behavior"
+          create_label release d93f0b "Release engineering"
+          create_label security b60205 "Security and credential handling"
+          create_label upstream-sync c5def5 "Upstream synchronization"
+
+      - name: Create milestone issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ensure_issue() {
+            title="$1"
+            labels="$2"
+            body="$3"
+            number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state all --search "in:title $title" --json number,title --jq ".[] | select(.title == \"$title\") | .number" | head -1)
+            if [ -n "$number" ]; then
+              echo "$number"
+              return
+            fi
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --label "$labels" --body "$body" | sed 's#.*/##'
+          }
+
+          foundation=$(ensure_issue "OpenWork foundation and CI" "openwork,desktop,upstream-sync" "Audit, upstream baseline, branch model, GitHub-hosted CI, and safe upstream synchronization.")
+          identity=$(ensure_issue "OpenWork product identity and workspace UI" "openwork,desktop" "Independent identity, privacy defaults, configuration compatibility, bilingual navigation, and general-work home.")
+          skills=$(ensure_issue "OpenWork global Skill manager and ZIP installer" "openwork,desktop,skills,security" "Global inventory, validation, non-destructive enable/disable, safe ZIP install, backup, rollback, export, and uninstall.")
+          mcp=$(ensure_issue "OpenWork MCP manager and JSON import" "openwork,desktop,mcp,security" "Visual management, JSON/JSONC and Claude import, comment-preserving merge, secret vault, backup, restore, and connection tests.")
+          usage=$(ensure_issue "OpenWork Go usage dashboard" "openwork,desktop,go-dashboard,security" "Official authenticated usage adapter where available, account switching, refresh states, and clearly labelled local fallback.")
+          windows=$(ensure_issue "OpenWork Windows packaging and smoke tests" "openwork,desktop,windows,security" "Windows 11 x64 NSIS and portable packaging, optional signing, coexistence, install, launch, and uninstall tests.")
+          release=$(ensure_issue "OpenWork RC and 0.1.0 release" "openwork,release,windows" "Release gates, SBOM, checksums, release notes, RC validation, formal tag, assets, and download verification.")
+          privacy=$(ensure_issue "OpenWork security, privacy, and migration review" "openwork,security,desktop" "Credential boundaries, redaction, telemetry audit, atomic writes, backups, path safety, and configuration migration review.")
+
+          master_body=$(cat <<EOF
+          End-to-end productization tracker for OpenWork 0.1.0.
+
+          Baseline: \`anomalyco/opencode@3a1c6df9e24672f0761a6ced18e1315d89334baf\`
+          Product branch: \`openwork-main\`
+          Release tags: \`openwork-v0.1.0-rc.*\` and \`openwork-v0.1.0\`
+
+          - [ ] #$foundation
+          - [ ] #$identity
+          - [ ] #$skills
+          - [ ] #$mcp
+          - [ ] #$usage
+          - [ ] #$windows
+          - [ ] #$privacy
+          - [ ] #$release
+
+          A formal release is blocked until all workflow release gates pass and Windows assets are independently verified.
+          EOF
+          )
+          ensure_issue "OpenWork 0.1.0" "openwork,release" "$master_body" >/dev/null

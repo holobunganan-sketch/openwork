@@ -120,6 +120,17 @@ export async function mockOpenCodeServer(page: Page, config: MockServerConfig) {
     if (todoMatch) return json(route, config.todos?.(todoMatch[1]!) ?? [])
     if (/^\/session\/[^/]+\/(children|diff)$/.test(path)) return json(route, [])
 
+    const promptAsyncMatch = path.match(/^\/session\/([^/]+)\/prompt_async$/)
+    if (promptAsyncMatch && route.request().method() === "POST") {
+      const body = await route.request().postDataJSON().catch(() => undefined)
+      config.onPrompt?.({ sessionID: promptAsyncMatch[1]!, body })
+      return route.fulfill({
+        status: 204,
+        headers: { "access-control-allow-origin": "*" },
+        body: "",
+      })
+    }
+
     const messagesMatch = path.match(/^\/session\/([^/]+)\/message$/)
     if (messagesMatch) {
       if (route.request().method() === "POST") {

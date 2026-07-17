@@ -1,6 +1,10 @@
 import { useOpenWorkTasks } from "@/context/openwork-tasks"
 import { useLanguage } from "@/context/language"
 import type { WorkActivityKind, WorkTaskStatus } from "@/openwork/task-runtime"
+import type { ContextSourceProvenance } from "@/openwork/context-graph"
+import { normalizeWorkSpec } from "@/openwork/work-spec"
+import type { WorkPermissions } from "@/openwork/work-permissions"
+import type { WorkSkillPhase } from "@/openwork/work-skill-router"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Icon } from "@opencode-ai/ui/v2/icon"
 import { createMemo, createSignal, For, Show } from "solid-js"
@@ -28,6 +32,11 @@ export function OpenWorkTaskBar(props: {
     return current.status
   })
   const recent = createMemo(() => task()?.activities.slice(-6).reverse() ?? [])
+  const spec = createMemo(() => {
+    const current = task()
+    if (!current) return
+    return normalizeWorkSpec(current.spec)
+  })
   const checkpointLabel = createMemo(() =>
     language.t("openwork.task.checkpoint.number", { count: (task()?.checkpoints.length ?? 0) + 1 }),
   )
@@ -92,7 +101,7 @@ export function OpenWorkTaskBar(props: {
           </div>
 
           <Show when={expanded()}>
-            <div class="grid max-h-[280px] grid-cols-1 gap-4 overflow-y-auto border-t border-v2-border-border-muted px-4 py-3 md:grid-cols-2">
+            <div class="grid max-h-[340px] grid-cols-1 gap-4 overflow-y-auto border-t border-v2-border-border-muted px-4 py-3 md:grid-cols-3">
               <section aria-label={language.t("openwork.task.contract")}>
                 <div class="mb-2 flex items-center justify-between gap-2">
                   <h3 class="m-0 text-[11px] uppercase tracking-[0.08em] text-v2-text-text-muted [font-weight:600]">
@@ -134,6 +143,85 @@ export function OpenWorkTaskBar(props: {
                     </For>
                   </div>
                 </Show>
+              </section>
+
+              <section aria-label={language.t("openwork.task.context")}>
+                <h3 class="m-0 mb-2 text-[11px] uppercase tracking-[0.08em] text-v2-text-text-muted [font-weight:600]">
+                  {language.t("openwork.task.context")}
+                </h3>
+                <div class="space-y-3">
+                  <div>
+                    <div class="mb-1 text-[10px] text-v2-text-text-muted [font-weight:600]">
+                      {language.t("openwork.task.sources")}
+                    </div>
+                    <div class="space-y-1">
+                      <For each={current.context?.sources ?? []}>
+                        {(source) => (
+                          <div class="flex min-w-0 items-center gap-1.5 text-[10px] leading-4">
+                            <span
+                              class="min-w-0 flex-1 truncate text-v2-text-text-base"
+                              title={source.path ?? source.label}
+                            >
+                              {source.label}
+                            </span>
+                            <span class="shrink-0 rounded-full bg-v2-background-bg-layer-03 px-1.5 text-v2-text-text-muted">
+                              {sourceProvenanceLabel(source.provenance, language.t)}
+                            </span>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="mb-1 text-[10px] text-v2-text-text-muted [font-weight:600]">
+                      {language.t("openwork.task.assumptions")}
+                    </div>
+                    <ul class="m-0 space-y-1 p-0">
+                      <For each={current.context?.assumptions ?? spec()?.assumptions ?? []}>
+                        {(assumption) => (
+                          <li class="flex items-start gap-1.5 text-[10px] leading-4 text-v2-text-text-base">
+                            <span class="mt-1.5 size-1 shrink-0 rounded-full bg-v2-icon-icon-muted" />
+                            <span>{assumption}</span>
+                          </li>
+                        )}
+                      </For>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <div class="mb-1 text-[10px] text-v2-text-text-muted [font-weight:600]">
+                      {language.t("openwork.task.skillRouting")}
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                      <For each={current.context?.skillRoute ?? spec()?.skillRoute ?? []}>
+                        {(step) => (
+                          <span class="rounded-full border border-v2-border-border-muted px-1.5 py-0.5 text-[9px] text-v2-text-text-muted">
+                            {skillPhaseLabel(step.phase, language.t)} · {step.capability}
+                          </span>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="mb-1 text-[10px] text-v2-text-text-muted [font-weight:600]">
+                      {language.t("openwork.task.permissions")}
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                      <For each={permissionEntries(spec()?.permissions)}>
+                        {(permission) => (
+                          <span class="rounded-full bg-v2-background-bg-layer-03 px-1.5 py-0.5 text-[9px] text-v2-text-text-muted">
+                            {permissionLabel(permission.id, language.t)} ·{" "}
+                            {language.t(
+                              permission.decision === "allow" ? "openwork.permission.allow" : "openwork.permission.ask",
+                            )}
+                          </span>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                </div>
               </section>
 
               <section aria-label={language.t("openwork.task.activity")}>
@@ -204,4 +292,42 @@ function statusColor(status: WorkTaskStatus) {
   if (status === "completed") return "bg-v2-state-fg-success"
   if (status === "paused") return "bg-v2-icon-icon-muted"
   return "bg-v2-icon-icon-base"
+}
+
+function sourceProvenanceLabel(provenance: ContextSourceProvenance, t: Translate) {
+  const keys = {
+    workspace: "openwork.source.workspace",
+    attachment: "openwork.source.attachment",
+    context: "openwork.source.context",
+    mention: "openwork.source.mention",
+  } as const
+  return t(keys[provenance])
+}
+
+function permissionEntries(permissions: WorkPermissions | undefined) {
+  if (!permissions) return []
+  return (["workspace", "commands", "network", "external", "destructive"] as const).map((id) => ({
+    id,
+    decision: permissions[id],
+  }))
+}
+
+function permissionLabel(id: Exclude<keyof WorkPermissions, "read">, t: Translate) {
+  const keys = {
+    workspace: "openwork.permission.workspace",
+    commands: "openwork.permission.commands",
+    network: "openwork.permission.network",
+    external: "openwork.permission.external",
+    destructive: "openwork.permission.destructive",
+  } as const
+  return t(keys[id])
+}
+
+function skillPhaseLabel(phase: WorkSkillPhase, t: Translate) {
+  const keys = {
+    inspect: "openwork.skillPhase.inspect",
+    create: "openwork.skillPhase.create",
+    verify: "openwork.skillPhase.verify",
+  } as const
+  return t(keys[phase])
 }

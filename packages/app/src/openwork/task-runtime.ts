@@ -1,4 +1,5 @@
 import type { WorkSpec } from "./work-spec"
+import { mergeContextGraphs, type ContextGraph } from "./context-graph"
 
 export type WorkTaskStatus = "draft" | "running" | "waiting" | "paused" | "ready" | "failed" | "completed"
 
@@ -33,11 +34,20 @@ export type WorkTask = {
   sessionID: string
   directory: string
   spec: WorkSpec
+  context?: ContextGraph
   status: WorkTaskStatus
   createdAt: number
   updatedAt: number
   activities: WorkActivity[]
   checkpoints: WorkCheckpoint[]
+}
+
+export function setWorkTaskContext(task: WorkTask, context: ContextGraph, at: number): WorkTask {
+  return {
+    ...task,
+    context: mergeContextGraphs(task.context, context),
+    updatedAt: at,
+  }
 }
 
 const ACTIVITY_LIMIT = 100

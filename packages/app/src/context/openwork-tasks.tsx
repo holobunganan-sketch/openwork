@@ -5,11 +5,13 @@ import { uuid } from "@/utils/uuid"
 import {
   addWorkCheckpoint,
   createWorkTask,
+  setWorkTaskContext,
   transitionWorkTask,
   workTaskKey,
   type WorkTask,
   type WorkTaskStatus,
 } from "@/openwork/task-runtime"
+import type { ContextGraph } from "@/openwork/context-graph"
 import type { WorkSpec } from "@/openwork/work-spec"
 
 const TASK_LIMIT = 200
@@ -80,6 +82,13 @@ export const { use: useOpenWorkTasks, provider: OpenWorkTasksProvider } = create
           checkpointID: uuid(),
           activityID: uuid(),
         })
+        replace(next)
+        return next
+      },
+      setContext(scope: string, sessionID: string, context: ContextGraph) {
+        const current = get(scope, sessionID)
+        if (!current) return
+        const next = setWorkTaskContext(current, context, Date.now())
         replace(next)
         return next
       },

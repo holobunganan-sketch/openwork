@@ -2,6 +2,7 @@ import type { OpenWorkMcpServer, OpenWorkSkill, OpenWorkSkillZipPreview, OpenWor
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { createWorkSpec, type WorkAutonomy, type WorkKind, type WorkSpec } from "@/openwork/work-spec"
+import { defaultWorkPermissions, type WorkPermissions } from "@/openwork/work-permissions"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Icon } from "@opencode-ai/ui/v2/icon"
 import { TextareaV2 } from "@opencode-ai/ui/v2/textarea-v2"
@@ -10,10 +11,17 @@ import { createStore } from "solid-js/store"
 
 export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec: WorkSpec) => void }) {
   const language = useLanguage()
-  const [state, setState] = createStore({
+  const [state, setState] = createStore<{
+    prompt: string
+    kind?: WorkKind
+    autonomy: WorkAutonomy
+    permissions: WorkPermissions
+    controls: boolean
+  }>({
     prompt: "",
-    kind: undefined as WorkKind | undefined,
-    autonomy: "collaborate" as WorkAutonomy,
+    autonomy: "collaborate",
+    permissions: defaultWorkPermissions("collaborate"),
+    controls: false,
   })
   const tasks = createMemo(() => [
     {
@@ -64,8 +72,35 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
       description: language.t("openwork.autonomy.agent.description"),
     },
   ])
+  const permissionControls = createMemo(() => [
+    {
+      id: "workspace" as const,
+      label: language.t("openwork.permission.workspace"),
+      description: language.t("openwork.permission.workspace.description"),
+    },
+    {
+      id: "commands" as const,
+      label: language.t("openwork.permission.commands"),
+      description: language.t("openwork.permission.commands.description"),
+    },
+    {
+      id: "network" as const,
+      label: language.t("openwork.permission.network"),
+      description: language.t("openwork.permission.network.description"),
+    },
+    {
+      id: "external" as const,
+      label: language.t("openwork.permission.external"),
+      description: language.t("openwork.permission.external.description"),
+    },
+  ])
   const workSpec = createMemo(() =>
-    createWorkSpec({ prompt: state.prompt, kind: state.kind, autonomy: state.autonomy }),
+    createWorkSpec({
+      prompt: state.prompt,
+      kind: state.kind,
+      autonomy: state.autonomy,
+      permissions: state.permissions,
+    }),
   )
 
   function start() {
@@ -113,13 +148,26 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
                     title={mode.description}
                     data-selected={state.autonomy === mode.id ? "" : undefined}
                     class="h-7 rounded-[6px] border-0 bg-transparent px-2 text-[11px] text-v2-text-text-muted transition-colors hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-text-text-base data-[selected]:bg-v2-background-bg-layer-03 data-[selected]:text-v2-text-text-base focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-v2-border-border-focus"
-                    onClick={() => setState("autonomy", mode.id)}
+                    onClick={() =>
+                      setState({
+                        autonomy: mode.id,
+                        permissions: defaultWorkPermissions(mode.id),
+                      })
+                    }
                   >
                     {mode.label}
                   </button>
                 )}
               </For>
             </div>
+            <ButtonV2
+              size="small"
+              variant="ghost-muted"
+              icon="sliders"
+              onClick={() => setState("controls", (value) => !value)}
+            >
+              {language.t("openwork.permission.controls")}
+            </ButtonV2>
             <ButtonV2
               variant="contrast"
               icon="arrow-up"
@@ -129,6 +177,55 @@ export function OpenWorkLaunchpad(props: { disabled: boolean; onTask: (workSpec:
               {language.t("openwork.composer.start")}
             </ButtonV2>
           </div>
+          <Show when={state.controls}>
+            <div class="mt-2 border-t border-v2-border-border-muted px-2 pb-1 pt-3">
+              <div class="mb-2 flex items-start justify-between gap-4">
+                <div>
+                  <div class="text-[11px] text-v2-text-text-base [font-weight:600]">
+                    {language.t("openwork.permission.title")}
+                  </div>
+                  <p class="m-0 mt-0.5 text-[10px] leading-4 text-v2-text-text-muted">
+                    {language.t("openwork.permission.description")}
+                  </p>
+                </div>
+                <span class="shrink-0 rounded-full bg-v2-background-bg-layer-03 px-2 py-1 text-[10px] text-v2-text-text-muted">
+                  {language.t("openwork.permission.destructive")}: {language.t("openwork.permission.alwaysAsk")}
+                </span>
+              </div>
+              <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                <For each={permissionControls()}>
+                  {(control) => (
+                    <div class="flex min-w-0 items-center gap-2 rounded-[7px] bg-v2-background-bg-base px-2.5 py-2">
+                      <div class="min-w-0 flex-1">
+                        <div class="text-[11px] text-v2-text-text-base [font-weight:560]">{control.label}</div>
+                        <div class="truncate text-[10px] text-v2-text-text-muted" title={control.description}>
+                          {control.description}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        data-allowed={state.permissions[control.id] === "allow" ? "" : undefined}
+                        class="h-6 shrink-0 rounded-full border border-v2-border-border-muted bg-transparent px-2 text-[10px] text-v2-text-text-muted data-[allowed]:border-v2-border-border-strong data-[allowed]:bg-v2-background-bg-layer-03 data-[allowed]:text-v2-text-text-base focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-v2-border-border-focus"
+                        onClick={() =>
+                          setState(
+                            "permissions",
+                            control.id,
+                            state.permissions[control.id] === "allow" ? "ask" : "allow",
+                          )
+                        }
+                      >
+                        {language.t(
+                          state.permissions[control.id] === "allow"
+                            ? "openwork.permission.allow"
+                            : "openwork.permission.ask",
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </div>
+          </Show>
         </div>
 
         <div class="mt-3 flex flex-wrap justify-center gap-1.5">

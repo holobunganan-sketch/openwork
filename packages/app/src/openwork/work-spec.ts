@@ -1,3 +1,6 @@
+import { defaultWorkPermissions, type WorkPermissions } from "./work-permissions"
+import { routeWorkSkills, type WorkSkillRouteStep } from "./work-skill-router"
+
 export type WorkKind = "general" | "document" | "research" | "data" | "presentation" | "software"
 
 export type WorkAutonomy = "plan" | "collaborate" | "agent"
@@ -9,6 +12,11 @@ export type WorkSpec = {
   autonomy: WorkAutonomy
   deliverables: string[]
   acceptanceCriteria: string[]
+  assumptions: string[]
+  skillHints: string[]
+  skillRoute: WorkSkillRouteStep[]
+  questionPolicy: "only-material"
+  permissions: WorkPermissions
 }
 
 const kindRules: { kind: Exclude<WorkKind, "general">; patterns: RegExp[] }[] = [
@@ -90,21 +98,72 @@ const defaults: Record<WorkKind, { deliverables: string[]; acceptanceCriteria: s
   },
 }
 
-export function createWorkSpec(input: { prompt: string; kind?: WorkKind; autonomy?: WorkAutonomy }): WorkSpec {
+const harnessDefaults: Record<WorkKind, { assumptions: string[] }> = {
+  general: {
+    assumptions: ["Use the current workspace and attached materials as the source of truth"],
+  },
+  document: {
+    assumptions: [
+      "Prefer an editable deliverable and a professional neutral tone unless the source material says otherwise",
+    ],
+  },
+  research: {
+    assumptions: ["Prefer current primary or authoritative sources and make evidence limits explicit"],
+  },
+  data: {
+    assumptions: [
+      "Preserve the original data, make calculations reproducible, and prioritize decision-relevant findings",
+    ],
+  },
+  presentation: {
+    assumptions: ["Prefer an editable deck with a concise narrative and a restrained visual system"],
+  },
+  software: {
+    assumptions: ["Preserve unrelated user changes and follow repository-local instructions before editing"],
+  },
+}
+
+export function createWorkSpec(input: {
+  prompt: string
+  kind?: WorkKind
+  autonomy?: WorkAutonomy
+  permissions?: WorkPermissions
+}): WorkSpec {
   const goal = input.prompt.trim()
   const kind =
     input.kind ?? kindRules.find((rule) => rule.patterns.some((pattern) => pattern.test(goal)))?.kind ?? "general"
+  const autonomy = input.autonomy ?? "collaborate"
+  const skillRoute = routeWorkSkills(kind)
   return {
     version: 1,
     goal,
     kind,
-    autonomy: input.autonomy ?? "collaborate",
+    autonomy,
     deliverables: defaults[kind].deliverables,
     acceptanceCriteria: defaults[kind].acceptanceCriteria,
+    assumptions: harnessDefaults[kind].assumptions,
+    skillHints: skillRoute.map((step) => step.capability),
+    skillRoute,
+    questionPolicy: "only-material",
+    permissions: input.permissions ?? defaultWorkPermissions(autonomy),
+  }
+}
+
+export function normalizeWorkSpec(spec: WorkSpec): WorkSpec {
+  const defaults = harnessDefaults[spec.kind]
+  const skillRoute = spec.skillRoute ?? routeWorkSkills(spec.kind)
+  return {
+    ...spec,
+    assumptions: spec.assumptions ?? defaults.assumptions,
+    skillHints: spec.skillHints ?? skillRoute.map((step) => step.capability),
+    skillRoute,
+    questionPolicy: spec.questionPolicy ?? "only-material",
+    permissions: spec.permissions ?? defaultWorkPermissions(spec.autonomy),
   }
 }
 
 export function formatWorkSpecContext(spec: WorkSpec) {
+  spec = normalizeWorkSpec(spec)
   const autonomy = {
     plan: "Inspect and plan only. Do not write files, run mutating commands, or perform external actions.",
     collaborate:
@@ -119,7 +178,13 @@ export function formatWorkSpecContext(spec: WorkSpec) {
     `Execution mode: ${spec.autonomy}. ${autonomy}`,
     `Expected deliverables: ${spec.deliverables.join("; ")}`,
     `Acceptance criteria: ${spec.acceptanceCriteria.join("; ")}`,
-    "First inspect the available workspace and attachments. Preserve user-authored work, keep material assumptions explicit, continue until the acceptance criteria are verified, and report concrete evidence in the handoff.",
+    `Working assumptions: ${spec.assumptions.join("; ")}`,
+    `Skill route: ${spec.skillRoute.map((step) => `${step.phase}=[${step.capability}]`).join(" -> ")}`,
+    `Scoped permissions: ${Object.entries(spec.permissions)
+      .map(([scope, decision]) => `${scope}=${decision}`)
+      .join("; ")}`,
+    "Question policy: ask only when a missing answer would materially change the deliverable, authorization, cost, or irreversible outcome. Otherwise state a reasonable reversible assumption and continue.",
+    "First inspect the available workspace and attachments. Preserve user-authored work, compose only the skills needed for the task, continue until the acceptance criteria are verified, and report concrete evidence in the handoff.",
     "</openwork_task_contract>",
   ].join("\n")
 }

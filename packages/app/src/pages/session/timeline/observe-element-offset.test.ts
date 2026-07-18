@@ -16,14 +16,42 @@ test("matches only the scroll element or an ancestor containing it", () => {
 })
 
 test("reports a divergent native offset once and ignores equal offsets and unrelated mutations", async () => {
-  const route = document.createElement("section")
-  const viewport = document.createElement("div")
-  const unrelated = document.createElement("div")
+  const testDocument = document.implementation.createHTMLDocument()
+  const route = testDocument.createElement("section")
+  const viewport = testDocument.createElement("div")
+  const unrelated = testDocument.createElement("div")
+  let mutationCallback: MutationCallback | undefined
+  let controlledObserver: ControlledMutationObserver | undefined
+  class ControlledMutationObserver {
+    constructor(callback: MutationCallback) {
+      mutationCallback = callback
+      controlledObserver = this
+    }
+    observe() {}
+    disconnect() {}
+    takeRecords() {
+      return []
+    }
+  }
+  const targetWindow = {
+    MutationObserver: ControlledMutationObserver,
+    performance: window.performance,
+    requestAnimationFrame: window.requestAnimationFrame.bind(window),
+    cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
+    setTimeout: window.setTimeout.bind(window),
+    clearTimeout: window.clearTimeout.bind(window),
+  } as unknown as Window
+  const mutation = (addedNodes: Node[], removedNodes: Node[]) =>
+    ({ target: testDocument.body, addedNodes, removedNodes }) as unknown as MutationRecord
+  const deliverMutations = (...records: MutationRecord[]) => {
+    if (!mutationCallback || !controlledObserver) throw new Error("Reconnect observer was not initialized")
+    mutationCallback(records, controlledObserver as unknown as MutationObserver)
+  }
   route.append(viewport)
-  document.body.append(route)
+  testDocument.body.append(route)
   const instance = {
     scrollElement: viewport,
-    targetWindow: window,
+    targetWindow,
     scrollOffset: 79_400,
     options: {
       horizontal: false,
@@ -38,25 +66,28 @@ test("reports a divergent native offset once and ignores equal offsets and unrel
     instance.scrollOffset = offset
   })
 
-  document.body.append(unrelated)
-  unrelated.remove()
-  await frames(2)
-  expect(calls).toEqual([])
+  try {
+    testDocument.body.append(unrelated)
+    unrelated.remove()
+    deliverMutations(mutation([unrelated], []), mutation([], [unrelated]))
+    await frames(2)
+    expect(calls).toEqual([])
 
-  route.remove()
-  document.body.append(route)
-  await new Promise((resolve) => setTimeout(resolve, 0))
-  await waitFor(() => calls.length > 0)
-  expect(calls).toEqual([[0, false]])
+    route.remove()
+    testDocument.body.append(route)
+    deliverMutations(mutation([], [route]), mutation([route], []))
+    await frames(2)
+    expect(calls).toEqual([[0, false]])
 
-  route.remove()
-  document.body.append(route)
-  await new Promise((resolve) => setTimeout(resolve, 0))
-  await frames(3)
-  expect(calls).toEqual([[0, false]])
-
-  cleanup?.()
-  route.remove()
+    route.remove()
+    testDocument.body.append(route)
+    deliverMutations(mutation([], [route]), mutation([route], []))
+    await frames(3)
+    expect(calls).toEqual([[0, false]])
+  } finally {
+    cleanup?.()
+    route.remove()
+  }
 })
 
 test("keeps checking until stale reset-delay callbacks can no longer win", async () => {
@@ -196,12 +227,4 @@ async function frames(count: number) {
   for (let index = 0; index < count; index++) {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
   }
-}
-
-async function waitFor(predicate: () => boolean, maxAttempts = 20) {
-  for (let index = 0; index < maxAttempts && !predicate(); index++) {
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    await frames(1)
-  }
-  expect(predicate()).toBe(true)
 }

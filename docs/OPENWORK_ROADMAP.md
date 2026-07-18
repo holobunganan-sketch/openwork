@@ -41,3 +41,11 @@ Formal release gates are defined in the release workflow and release documentati
 - [x] Add browser coverage for one-click task launch and server-backed prompt submission
 - [x] Publish and validate `openwork-v0.2.1-rc.1`
 - [x] Fix RC defects and publish `openwork-v0.2.1`
+
+## OpenWork 0.2.2
+
+- [x] Prevent duplicate task tabs when the task-first composer is activated more than once during navigation
+- [x] Ignore IME composition and repeated keyboard activation while launching a task
+- [x] Add a browser regression for exactly one session, prompt submission, and titlebar tab
+- [ ] Publish and validate `openwork-v0.2.2-rc.1`
+- [ ] Publish `openwork-v0.2.2` after the RC passes every release gate

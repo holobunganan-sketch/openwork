@@ -3,11 +3,11 @@ name: OpenWork Release
 on:
   push:
     tags:
-      - openwork-v0.2.1-rc.*
-      - openwork-v0.2.1
+      - openwork-v0.2.2-rc.*
+      - openwork-v0.2.2
     branches:
-      - release-021-rc*
-      - release-021
+      - release-022-rc*
+      - release-022
   pull_request:
     branches:
       - openwork-main
@@ -37,7 +37,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request' ||
       (github.event.pull_request.head.repo.full_name == github.repository &&
-      (github.head_ref == 'release-021' || startsWith(github.head_ref, 'release-021-rc')))
+      (github.head_ref == 'release-022' || startsWith(github.head_ref, 'release-022-rc')))
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.release.outputs.tag }}
@@ -73,16 +73,16 @@ jobs:
             source_ref="$REF_SHA"
           fi
           if [[ "$EVENT_NAME" == "pull_request" || ( "$EVENT_NAME" == "push" && "$REF_TYPE" == "branch" ) ]]; then
-            if [[ "$release_ref" == "release-021" ]]; then
-              tag="openwork-v0.2.1"
-            elif [[ "$release_ref" =~ ^release-021-rc([1-9][0-9]*)$ ]]; then
-              tag="openwork-v0.2.1-rc.${BASH_REMATCH[1]}"
+            if [[ "$release_ref" == "release-022" ]]; then
+              tag="openwork-v0.2.2"
+            elif [[ "$release_ref" =~ ^release-022-rc([1-9][0-9]*)$ ]]; then
+              tag="openwork-v0.2.2-rc.${BASH_REMATCH[1]}"
             else
-              echo "Release branch must be release-021 or release-021-rcN" >&2
+              echo "Release branch must be release-022 or release-022-rcN" >&2
               exit 1
             fi
           fi
-          if [[ ! "$tag" =~ ^openwork-v0\.2\.1(-rc\.[1-9][0-9]*)?$ ]]; then
+          if [[ ! "$tag" =~ ^openwork-v0\.2\.2(-rc\.[1-9][0-9]*)?$ ]]; then
             echo "Invalid OpenWork release tag: $tag" >&2
             exit 1
           fi
@@ -108,14 +108,14 @@ jobs:
             exit 1
           }
 
-      - name: Require a published release candidate before 0.2.1
+      - name: Require a published release candidate before 0.2.2
         if: steps.release.outputs.prerelease == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          count=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq '[.[] | select(.tag_name | test("^openwork-v0\\.2\\.1-rc\\.[1-9][0-9]*$")) | select(.draft == false and .prerelease == true)] | length')
+          count=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq '[.[] | select(.tag_name | test("^openwork-v0\\.2\\.2-rc\\.[1-9][0-9]*$")) | select(.draft == false and .prerelease == true)] | length')
           if [[ "$count" -lt 1 ]]; then
-            echo "OpenWork 0.2.1 requires at least one published 0.2.1 RC release" >&2
+            echo "OpenWork 0.2.2 requires at least one published 0.2.2 RC release" >&2
             exit 1
           fi
 
@@ -172,11 +172,11 @@ jobs:
         run: |
           find release -maxdepth 1 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > release/SHA256SUMS.txt
           if [[ "$PRERELEASE" == "true" ]]; then
-            printf '# OpenWork 0.2.1 release candidate\n\nThis is a prerelease for final Windows and harness validation.\n\n' > release-notes.md
+            printf '# OpenWork 0.2.2 release candidate\n\nThis is a prerelease for final Windows and harness validation.\n\n' > release-notes.md
           else
-            printf '# OpenWork 0.2.1\n\n' > release-notes.md
+            printf '# OpenWork 0.2.2\n\n' > release-notes.md
           fi
-          cat docs/releases/OPENWORK_0.2.1.md >> release-notes.md
+          cat docs/releases/OPENWORK_0.2.2.md >> release-notes.md
 
       - name: Publish immutable GitHub release
         env:

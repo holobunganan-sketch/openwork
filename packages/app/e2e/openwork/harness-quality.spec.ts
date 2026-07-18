@@ -36,8 +36,9 @@ async function openHarness(page: Page, options?: { onPrompt?: (body: unknown) =>
     },
     sessions,
     createSession: () => {
+      const index = sessions.length + 1
       const session = {
-        id: "session_openwork_harness",
+        id: index === 1 ? "session_openwork_harness" : `session_openwork_harness_${index}`,
         slug: "openwork-harness",
         projectID: "project_harness_quality",
         directory,
@@ -81,6 +82,7 @@ async function openHarness(page: Page, options?: { onPrompt?: (body: unknown) =>
   }, directory)
   await page.goto("/")
   await expectAppVisible(page.locator('[data-component="openwork-launchpad"]'))
+  return sessions
 }
 
 async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
@@ -168,6 +170,35 @@ test("starts the selected workspace and model in one task-first flow", async ({ 
   expect(JSON.stringify(prompts[0])).toContain("GPT-5")
   await expect(page.locator('[data-component="openwork-task-starting"]')).toHaveCount(0)
   await attachScreenshot(page, testInfo, "openwork-task-running")
+})
+
+test("creates only one task tab under rapid duplicate keyboard activation", async ({ page }) => {
+  const prompts: unknown[] = []
+  const sessions = await openHarness(page, { onPrompt: (body) => prompts.push(body) })
+  const launchpad = page.locator('[data-component="openwork-launchpad"]')
+  const composer = launchpad.getByRole("textbox", { name: /Describe what you want to accomplish/i })
+  await composer.fill("Say hello to this project")
+
+  await composer.evaluate((element) => {
+    if (!(element instanceof HTMLTextAreaElement)) throw new Error("OpenWork composer is not a textarea")
+    const activate = () =>
+      element.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          code: "Enter",
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+    activate()
+    activate()
+  })
+
+  await expect(page).toHaveURL(/\/session\/session_openwork_harness/)
+  await expect.poll(() => sessions.length).toBe(1)
+  await expect.poll(() => prompts.length).toBe(1)
+  await expect(page.locator("[data-titlebar-tab-slot]")).toHaveCount(1)
 })
 
 test("keeps memory visible, scoped, optional, and deliberately removable", async ({ page }, testInfo) => {

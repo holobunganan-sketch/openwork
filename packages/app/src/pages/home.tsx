@@ -306,6 +306,7 @@ export function NewHome() {
   const openSettings = useSettingsCommand()
   let focusSessionSearch: (() => void) | undefined
   let sessionViewport: HTMLDivElement | undefined
+  let quickTaskLaunch: Promise<unknown> | undefined
   const [sessionThumbTrack, setSessionThumbTrack] = createSignal<HTMLDivElement>()
   const [sessionHoverTarget, setSessionHoverTarget] = createSignal<HTMLElement>()
   const [state, setState] = createStore({
@@ -558,17 +559,25 @@ export function NewHome() {
     void tabs.newDraft({ server: ServerConnection.key(conn), directory })
   }
 
-  function openQuickTask(workSpec: WorkSpec) {
+  function openQuickTask(workSpec: WorkSpec): Promise<unknown> | undefined {
     const conn = focusedServer()
-    if (!conn || !workSpec.workspace || !workSpec.model) return
-    startQuickTask(conn, workSpec.workspace, workSpec)
+    if (!conn || !workSpec.workspace || !workSpec.model) return undefined
+    if (quickTaskLaunch) return quickTaskLaunch
+    const launch = startQuickTask(conn, workSpec.workspace, workSpec)
+    quickTaskLaunch = launch
+    void launch
+      .finally(() => {
+        if (quickTaskLaunch === launch) quickTaskLaunch = undefined
+      })
+      .catch(() => {})
+    return launch
   }
 
   function startQuickTask(conn: ServerConnection.Any, directory: string, workSpec: WorkSpec) {
     const ctx = global.ensureServerCtx(conn)
     ctx.projects.open(directory)
     ctx.projects.touch(directory)
-    void tabs.newDraft(
+    return tabs.newDraft(
       { server: ServerConnection.key(conn), directory, workSpec, autoStart: true },
       workSpec.goal,
       workSpec.model

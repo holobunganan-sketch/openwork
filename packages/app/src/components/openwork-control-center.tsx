@@ -33,7 +33,7 @@ export function OpenWorkLaunchpad(props: {
   workspaces: OpenWorkWorkspaceOption[]
   onWorkspaceSelect: (directory: string) => void
   onWorkspaceBrowse: () => void
-  onTask: (workSpec: WorkSpec) => void
+  onTask: (workSpec: WorkSpec) => void | Promise<unknown>
 }) {
   const language = useLanguage()
   const models = useModels()
@@ -45,6 +45,7 @@ export function OpenWorkLaunchpad(props: {
     autonomy: WorkAutonomy
     permissions: WorkPermissions
     controls: boolean
+    starting: boolean
     model?: ModelKey
     variant?: string
   }>({
@@ -52,6 +53,7 @@ export function OpenWorkLaunchpad(props: {
     autonomy: "collaborate",
     permissions: defaultWorkPermissions("collaborate"),
     controls: false,
+    starting: false,
   })
   const availableModels = createMemo(() =>
     models.list().filter((model) => models.visible({ providerID: model.provider.id, modelID: model.id })),
@@ -227,13 +229,18 @@ export function OpenWorkLaunchpad(props: {
   }
 
   function start() {
-    if (props.disabled || !state.prompt.trim() || !props.workspace || !currentModel()) return
-    props.onTask(workSpec())
+    if (state.starting || props.disabled || !state.prompt.trim() || !props.workspace || !currentModel()) return
+    setState("starting", true)
+    void Promise.resolve()
+      .then(() => props.onTask(workSpec()))
+      .catch((error) => console.error("Failed to start OpenWork task", error))
+      .finally(() => setState("starting", false))
   }
 
   return (
     <section
       data-component="openwork-launchpad"
+      aria-busy={state.starting}
       class="mb-8 flex min-w-0 flex-col items-center pt-8 lg:pt-12"
       aria-label={language.t("openwork.home.title")}
     >
@@ -259,7 +266,8 @@ export function OpenWorkLaunchpad(props: {
               setState("kind", undefined)
             }}
             onKeyDown={(event) => {
-              if (event.key !== "Enter" || (!event.metaKey && !event.ctrlKey)) return
+              if (event.isComposing || event.repeat || event.key !== "Enter" || (!event.metaKey && !event.ctrlKey))
+                return
               event.preventDefault()
               start()
             }}
@@ -407,7 +415,8 @@ export function OpenWorkLaunchpad(props: {
             <ButtonV2
               variant="contrast"
               icon="arrow-up"
-              disabled={props.disabled || !state.prompt.trim() || !props.workspace || !currentModel()}
+              data-starting={state.starting ? "" : undefined}
+              disabled={state.starting || props.disabled || !state.prompt.trim() || !props.workspace || !currentModel()}
               onClick={start}
             >
               {language.t("openwork.composer.start")}

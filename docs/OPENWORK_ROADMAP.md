@@ -47,5 +47,5 @@ Formal release gates are defined in the release workflow and release documentati
 - [x] Prevent duplicate task tabs when the task-first composer is activated more than once during navigation
 - [x] Ignore IME composition and repeated keyboard activation while launching a task
 - [x] Add a browser regression for exactly one session, prompt submission, and titlebar tab
-- [ ] Publish and validate `openwork-v0.2.2-rc.1`
-- [ ] Publish `openwork-v0.2.2` after the RC passes every release gate
+- [x] Publish and validate `openwork-v0.2.2-rc.1`
+- [x] Publish `openwork-v0.2.2` after the RC passes every release gate
